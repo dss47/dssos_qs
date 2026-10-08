@@ -1,0 +1,7 @@
+singleton BarState BarState.qml
+singleton ContextMenuState ContextMenuState.qml
+Taskbar Taskbar.qml
+QuickSettings QuickSettings.qml
+StartMenu StartMenu.qml
+HiddenTray HiddenTray.qml
+ContextMenu ContextMenu.qml
