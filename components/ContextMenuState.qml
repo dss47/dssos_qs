@@ -10,8 +10,6 @@ import QtQuick
 //   ], "App name")
 // Item shape: { label, action, icon?: assets/icons name, hint?: shortcut text,
 //               danger?: bool, enabled?: bool (false greys the row), sep?: bool }
-// NOTE: plain ES5-style code only (loops, === checks). No ??, no arrows:
-// some Qt builds miscompile those inside closures.
 QtObject {
     property bool open: false
     property string title: ""

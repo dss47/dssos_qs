@@ -94,9 +94,13 @@ PanelWindow {
 
     function launch(entry) {
         if (entry.runInTerminal) {
-            // execute() won't open a terminal for Terminal=true apps
+            // execute() won't open a terminal for Terminal=true apps;
+            // entry.command may still carry %U-style field codes, drop them
             const argv = ["kitty", "-e"];
-            for (const a of entry.command) { argv.push(a); }
+            for (const a of entry.command) {
+                if (/^%[a-zA-Z]$/.test(a)) { continue; }
+                argv.push(a);
+            }
             Quickshell.execDetached(argv);
         } else {
             entry.execute();
@@ -119,7 +123,7 @@ PanelWindow {
         Layout.preferredWidth: 40
         Layout.preferredHeight: 40
         radius: 12
-        color: pb.armed ? "#a33a45" : (pArea.containsMouse ? pb.hoverColor : menu.cardColor)
+        color: pb.armed ? Style.dangerDeep : (pArea.containsMouse ? pb.hoverColor : menu.cardColor)
         Behavior on color { ColorAnimation { duration: 120 } }
 
         Timer {
@@ -276,14 +280,29 @@ PanelWindow {
                             anchors { fill: parent; margins: 6 }
                             spacing: 6
                             Item { Layout.fillHeight: true }
-                            Image {
+                            // letter placeholder behind the icon: covers slow loads
+                            // and entries with no usable icon instead of a blank cell
+                            Item {
                                 Layout.alignment: Qt.AlignHCenter
                                 Layout.preferredWidth: 40
                                 Layout.preferredHeight: 40
-                                sourceSize: Qt.size(80, 80)
-                                source: Quickshell.iconPath(cell.modelData.icon, "application-x-executable")
-                                fillMode: Image.PreserveAspectFit
-                                asynchronous: true
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: cell.modelData.name.charAt(0).toUpperCase()
+                                    color: Style.dim
+                                    font.pixelSize: 22
+                                    font.bold: true
+                                }
+                                Image {
+                                    id: iconImg
+                                    anchors.fill: parent
+                                    sourceSize: Qt.size(80, 80)
+                                    source: Quickshell.iconPath(cell.modelData.icon, "application-x-executable")
+                                    fillMode: Image.PreserveAspectFit
+                                    asynchronous: true
+                                    // hide broken images instead of showing a blank frame
+                                    visible: status !== Image.Error
+                                }
                             }
                             Text {
                                 Layout.fillWidth: true
@@ -327,7 +346,7 @@ PanelWindow {
                 }
                 PowerButton { icon: "lock"; cmd: ["loginctl", "lock-session"] }
                 PowerButton { icon: "rotate-cw"; cmd: ["systemctl", "reboot"]; confirm: true }
-                PowerButton { icon: "power"; cmd: ["systemctl", "poweroff"]; confirm: true; hoverColor: "#a33a45" }
+                PowerButton { icon: "power"; cmd: ["systemctl", "poweroff"]; confirm: true; hoverColor: Style.dangerDeep }
             }
         }
     }

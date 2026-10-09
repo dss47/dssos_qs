@@ -13,6 +13,10 @@ QtObject {
     readonly property color green: "#1e9e57"
     readonly property color amber: "#bd8f2a"
     readonly property color danger: "#e05561"
+    readonly property color dangerDeep: "#a33a45"
+    readonly property color mint: "#43d884"
+    readonly property color logoTop: "#5ff09a"
+    readonly property color logoBottom: "#25a75c"
 
     // taskbar geometry
     readonly property int barHeight: 48

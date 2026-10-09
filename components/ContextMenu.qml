@@ -133,14 +133,14 @@ PanelWindow {
                             opacity: 0.1
                         }
 
-                        // action row
+                        // action row (highlight animates color alpha, NOT opacity:
+                        // opacity would fade the labels nested inside too)
                         Rectangle {
                             visible: kind !== "sep"
                             anchors.fill: parent
                             radius: 8
-                            color: Style.text
-                            opacity: (ison && (rowMouse.containsMouse || rowMouse.pressed)) ? 0.15 : 0
-                            Behavior on opacity { NumberAnimation { duration: 80 } }
+                            color: Qt.rgba(1, 1, 1, !ison ? 0 : (rowMouse.pressed ? Style.press : (rowMouse.containsMouse ? Style.hover : 0)))
+                            Behavior on color { ColorAnimation { duration: 80 } }
 
                             RowLayout {
                                 anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
@@ -156,7 +156,7 @@ PanelWindow {
                                 Text {
                                     Layout.fillWidth: true
                                     text: label
-                                    color: danger ? Style.danger : (ison ? Style.text : "#8a8a8a")
+                                    color: danger ? Style.danger : (ison ? Style.text : Style.dim)
                                     font.pixelSize: 13
                                     elide: Text.ElideRight
                                 }

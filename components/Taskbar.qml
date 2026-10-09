@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Shapes
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Widgets
@@ -65,7 +64,18 @@ PanelWindow {
         return null;
     }
     readonly property bool wifiUp: Networking.wifiEnabled && !!activeWifi
-    readonly property int wifiLevel: !activeWifi ? 0 : Math.max(1, Math.ceil((activeWifi.signalStrength ?? 0) / 25))
+    readonly property var wiredDev: {
+        for (const d of Networking.devices.values) { if (d.type === DeviceType.Wired) { return d; } }
+        return null;
+    }
+    readonly property bool wiredUp: {
+        if (!wiredDev) { return false; }
+        for (const n of wiredDev.networks.values) { if (n.connected) { return true; } }
+        return false;
+    }
+    readonly property bool linkUp: wifiUp || wiredUp
+    // signalStrength is 0.0-1.0; a wired-only link shows full
+    readonly property int wifiLevel: !activeWifi ? (wiredUp ? 4 : 0) : Math.max(1, Math.ceil((activeWifi.signalStrength ?? 0) * 4))
 
     // full bar background with horizontal gradient, middle darker
     Rectangle {
@@ -124,16 +134,29 @@ PanelWindow {
                     anchors.centerIn: parent
                     columns: 2
                     spacing: 4
+                    visible: false
                     Repeater {
                         model: 4
                         Rectangle {
                             width: 10; height: 10; radius: 3
                             gradient: Gradient {
-                                GradientStop { position: 0.0; color: "#5ff09a" }
-                                GradientStop { position: 1.0; color: "#25a75c" }
+                                GradientStop { position: 0.0; color: Style.logoTop }
+                                GradientStop { position: 1.0; color: Style.logoBottom }
                             }
                         }
                     }
+                }
+                Image {
+                    id: logoImg
+                    anchors.centerIn: parent
+                    width: 32
+                    height: 32
+                    sourceSize.width: 64
+                    sourceSize.height: 64
+                    source: "../assets/logo.png"
+                    fillMode: Image.PreserveAspectFit
+                    smooth: true
+                    asynchronous: true
                 }
                 MouseArea {
                     id: startMouse
@@ -310,56 +333,16 @@ PanelWindow {
                 Item {
                     Layout.preferredWidth: 30
                     Layout.preferredHeight: 30
-                    // live signal bars; diagonal slash when no link
-                    Item {
+                    // pre-rendered level icon: rasterized once with full AA,
+                    // zero per-frame cost (no Shape, no MSAA layer)
+                    Image {
                         anchors.centerIn: parent
-                        width: 22
-                        height: 16
+                        width: 17
+                        height: 17
+                        sourceSize.width: 34
+                        sourceSize.height: 34
+                        source: "../assets/icons/wifi-" + Math.max(0, Math.min(4, bar.wifiLevel)) + ".svg"
                         opacity: Networking.wifiEnabled ? 1.0 : 0.45
-                        // wifi fan: dot + 3 arcs, lit up to wifiLevel
-                        Shape {
-                            anchors.fill: parent
-                            ShapePath {
-                                strokeWidth: 2.2
-                                capStyle: ShapePath.RoundCap
-                                strokeColor: Qt.rgba(1, 1, 1, bar.wifiLevel >= 4 ? 1.0 : 0.25)
-                                fillColor: "transparent"
-                                PathMove { x: 2.87; y: 5.07 }
-                                PathArc { x: 19.13; y: 5.07; radiusX: 11.5; radiusY: 11.5; useLargeArc: false }
-                            }
-                            ShapePath {
-                                strokeWidth: 2.2
-                                capStyle: ShapePath.RoundCap
-                                strokeColor: Qt.rgba(1, 1, 1, bar.wifiLevel >= 3 ? 1.0 : 0.25)
-                                fillColor: "transparent"
-                                PathMove { x: 4.99; y: 7.19 }
-                                PathArc { x: 17.01; y: 7.19; radiusX: 8.5; radiusY: 8.5; useLargeArc: false }
-                            }
-                            ShapePath {
-                                strokeWidth: 2.2
-                                capStyle: ShapePath.RoundCap
-                                strokeColor: Qt.rgba(1, 1, 1, bar.wifiLevel >= 2 ? 1.0 : 0.25)
-                                fillColor: "transparent"
-                                PathMove { x: 7.46; y: 9.66 }
-                                PathArc { x: 14.54; y: 9.66; radiusX: 5; radiusY: 5; useLargeArc: false }
-                            }
-                        }
-                        Rectangle {
-                            anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 1.2 }
-                            width: 3.2
-                            height: 3.2
-                            radius: 1.6
-                            color: Qt.rgba(1, 1, 1, bar.wifiLevel >= 1 ? 1.0 : 0.25)
-                        }
-                        Rectangle {
-                            visible: !bar.wifiUp
-                            anchors.centerIn: parent
-                            width: 22
-                            height: 2
-                            radius: 1
-                            rotation: -45
-                            color: Style.text
-                        }
                     }
                     MouseArea {
                         id: wifiMouse

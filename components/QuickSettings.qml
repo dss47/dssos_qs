@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
 import Quickshell.Services.Pipewire
+import Quickshell.Networking
 
 // Quick settings flyout, styled to match the bottom bar.
 PanelWindow {
@@ -31,7 +32,9 @@ PanelWindow {
     readonly property color surface: Style.surface
 
     // ---- state ----
-    property bool wifiOn: true
+    // wifi state lives in NetworkManager (Networking.wifiEnabled, writable);
+    // no local copy, no nmcli parse
+    property bool wifiBeforePlane: true
     property bool btOn: false
     property bool planeOn: false
     property bool dndOn: false
@@ -98,7 +101,7 @@ PanelWindow {
                 // reset offscreen only if fully gone; mid-close reopens glide back
                 if (!quick.shown && !quick.closing) card.y = quick.height;
                 quick.closing = false;
-                quick.page = "main"; wifiRead.running = true; btRead.running = true; brightRead.running = true;
+                quick.page = "main"; btRead.running = true; brightRead.running = true;
                 quick.shown = true;
                 openAnim.restart();
             } else if (quick.shown) {
@@ -110,10 +113,11 @@ PanelWindow {
         }
     }
 
-    Process {
-        id: wifiRead
-        command: ["env", "LC_ALL=C", "nmcli", "radio", "wifi"]
-        stdout: StdioCollector { onStreamFinished: quick.wifiOn = text.trim() === "enabled" }
+    // bluetooth needs a moment after rfkill unblocks the radio
+    Timer {
+        id: radioSettle
+        interval: 600
+        onTriggered: btRead.running = true
     }
     Process {
         id: btRead
@@ -181,7 +185,7 @@ PanelWindow {
         id: pill
         property string icon
         property real value: 0
-        property color fillColor: "#43d884"
+        property color fillColor: Style.mint
         signal moved(real v)
         signal iconClicked()
 
@@ -284,11 +288,10 @@ PanelWindow {
             columnSpacing: 8
 
             Tile {
-                icon: "wifi"; active: quick.wifiOn; more: true
+                icon: "wifi"; active: Networking.wifiEnabled; more: true
                 onClicked: mouse => {
                     if (mouse.button === Qt.RightButton) { quick.page = "wifi"; return; }
-                    quick.wifiOn = !quick.wifiOn;
-                    Quickshell.execDetached(["nmcli", "radio", "wifi", quick.wifiOn ? "on" : "off"]);
+                    Networking.wifiEnabled = !Networking.wifiEnabled;
                 }
             }
             Tile {
@@ -304,8 +307,15 @@ PanelWindow {
                 onClicked: {
                     quick.planeOn = !quick.planeOn;
                     Quickshell.execDetached(["rfkill", quick.planeOn ? "block" : "unblock", "all"]);
-                    // rfkill kills the radios: reflect it until the next read corrects us
-                    if (quick.planeOn) { quick.wifiOn = false; quick.btOn = false; }
+                    if (quick.planeOn) {
+                        // rfkill kills the radios: remember wifi to restore it after
+                        quick.wifiBeforePlane = Networking.wifiEnabled;
+                        Networking.wifiEnabled = false;
+                        quick.btOn = false;
+                    } else {
+                        Networking.wifiEnabled = quick.wifiBeforePlane;
+                        radioSettle.restart();
+                    }
                 }
             }
             Tile {
@@ -362,17 +372,14 @@ PanelWindow {
                 Text { text: "Wi-Fi"; color: Style.text; font.pixelSize: 15; font.bold: true; Layout.fillWidth: true }
                 Rectangle {
                     Layout.preferredWidth: 46; Layout.preferredHeight: 26; radius: 13
-                    color: quick.wifiOn ? Style.green : Style.cardHi
+                    color: Networking.wifiEnabled ? Style.green : Style.cardHi
                     Rectangle {
-                        x: quick.wifiOn ? 22 : 2; y: 2; width: 22; height: 22; radius: 11; color: Style.text
+                        x: Networking.wifiEnabled ? 22 : 2; y: 2; width: 22; height: 22; radius: 11; color: Style.text
                     }
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            quick.wifiOn = !quick.wifiOn;
-                            Quickshell.execDetached(["nmcli", "radio", "wifi", quick.wifiOn ? "on" : "off"]);
-                        }
+                        onClicked: Networking.wifiEnabled = !Networking.wifiEnabled
                     }
                 }
             }
