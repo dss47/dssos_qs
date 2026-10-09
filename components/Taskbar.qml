@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Wayland
+import Quickshell.Hyprland
 import Quickshell.Widgets
 import Quickshell.Services.Pipewire
 import Quickshell.Networking
@@ -22,9 +23,9 @@ PanelWindow {
     exclusionMode: ExclusionMode.Normal
 
 
-    // pinned launchers (must match installed .desktop IDs) + live windows grouped by appId
-    // uninstalled IDs are auto-hidden by the lookup check below
-    property var pinnedIds: ["kitty", "dev.zed.Zed", "helium", "org.gnome.Nautilus", "discord"]
+    // pinned launchers (empty for now: taskbar shows open apps only.
+    // add .desktop IDs here later to pin them)
+    property var pinnedIds: []
     readonly property var taskApps: {
         // depend on live toplevels so this re-evaluates on open/close.
         // desktop entries resolve once here, not per delegate.
@@ -45,6 +46,167 @@ PanelWindow {
             map.get(k).toplevels.push(tl);
         }
         return [...map.values()];
+    }
+
+    // auto-spread: EVERY new window takes the next free workspace slot
+    // (kitty -> 1, helium -> 2, kitty#2 -> 3, ...), same app or not.
+    // Clicking the taskbar icon jumps back via activate(). Closing a window
+    // squeezes the rest down so there are no gaps. Windows present at shell
+    // start keep their place (snapshotted silently, never moved).
+    // window -> slot, keyed by Hyprland address (stable across evaluations;
+    // QML object identity is not)
+    property var winSlots: ({})
+    property int nextSlot: 1
+    property bool spreadReady: false
+
+    // arm late: ToplevelManager populates async, so an instant snapshot
+    // would miss startup windows and move them on first sight.
+    // Slots adopt the REAL layout: a window already on ws 3 keeps slot 3.
+    Timer {
+        id: spreadArm
+        interval: 2000
+        onTriggered: {
+            let max = 0;
+            for (let i = 0; i < Hyprland.toplevels.count; i++) {
+                const h = Hyprland.toplevels.get(i);
+                if (!h || !h.wayland || h.address === "") continue;
+                if (bar.isSpecial(h)) continue;
+                const id = (h.workspace && h.workspace.id > 0) ? h.workspace.id : 0;
+                if (id <= 0) continue;
+                bar.winSlots[h.address] = id;
+                if (id > max) max = id;
+            }
+            bar.nextSlot = max + 1;
+            bar.spreadReady = true;
+        }
+    }
+    Component.onCompleted: spreadArm.start()
+
+    // one-shot retry: an address sometimes arrives just after the change
+    // event. Bounded so a broken client can't spin forever.
+    property int addrRetries: 0
+    Timer {
+        id: spreadRetry
+        interval: 500
+        onTriggered: bar.spreadUpdate()
+    }
+
+    function isSpecial(h) {
+        const nm = (h.workspace && h.workspace.name) ? h.workspace.name.toString() : "";
+        return nm.startsWith("special");
+    }
+
+    function isDialog(title) {
+        return /open|save|choose|upload|select/i.test((title ?? "").toString());
+    }
+
+    // Hyprland-side workspace name for an address ("" if unknown)
+    function wsNameOf(addr) {
+        for (let i = 0; i < Hyprland.toplevels.count; i++) {
+            const h = Hyprland.toplevels.get(i);
+            if (h && h.address === addr)
+                return (h.workspace && h.workspace.name) ? h.workspace.name.toString() : "";
+        }
+        return "";
+    }
+    function addrOf(tl) {
+        for (let i = 0; i < Hyprland.toplevels.count; i++) {
+            const h = Hyprland.toplevels.get(i);
+            if (h && h.wayland === tl) return h.address;
+        }
+        return "";
+    }
+
+    function addrOfAll() {
+        const out = [];
+        for (const app of bar.taskApps)
+            for (const w of app.toplevels) {
+                const a = bar.addrOf(w);
+                if (a !== "") out.push(a);
+            }
+        return out;
+    }
+
+    // address arrival doesn't refire taskApps, so watch Hyprland's list too
+    property var hyTls: Hyprland.toplevels.values
+    onHyTlsChanged: bar.spreadUpdate()
+    onTaskAppsChanged: bar.spreadUpdate()
+
+    function titleOf(addr) {
+        for (const app of bar.taskApps)
+            for (const w of app.toplevels)
+                if (bar.addrOf(w) === addr) return w.title;
+        return "";
+    }
+
+    function spreadUpdate() {
+        if (!bar.spreadReady) return;
+        console.log("[spread] change, groups=" + bar.taskApps.length
+            + " hyprTls=" + Hyprland.toplevels.count
+            + " matched=" + bar.addrOfAll().length);
+        let pending = false;
+        // 1. brand-new windows (dialogs and scratchpad excluded) take the next slot
+        for (const app of bar.taskApps) {
+            for (const w of app.toplevels) {
+                const a = bar.addrOf(w);
+                if (a === "") {
+                    pending = true;
+                    if (bar.addrRetries < 10) { bar.addrRetries++; spreadRetry.restart(); }
+                    continue;
+                }
+                if ((a in bar.winSlots)) continue;
+                if (bar.isDialog(w.title)) continue;
+                if (bar.wsNameOf(a).startsWith("special")) continue;
+                const slot = bar.nextSlot++;
+                bar.winSlots[a] = slot;
+                // lua-mode Hyprland: Lua dispatcher expression, no address
+                // selector so it moves the active window (the new one here)
+                console.log("[spread] new window -> ws " + slot);
+                Hyprland.dispatch("hl.dsp.window.move({ workspace = \"" + slot + "\" })");
+            }
+        }
+        // 2. drop closed windows, squeeze the rest down so no gaps remain
+        // (scratchpad windows are never counted or moved)
+        const live = [];
+        for (const a of bar.addrOfAll()) {
+            if (!(a in bar.winSlots)) continue;
+            if (bar.wsNameOf(a).startsWith("special")) continue;
+            live.push({ addr: a, slot: bar.winSlots[a] });
+        }
+        live.sort((a, b) => a.slot - b.slot);
+        const fresh = {};
+        let n = 1, moved = false;
+        for (const g of live) {
+            fresh[g.addr] = n;
+            if (g.slot !== n) moved = true;
+            n++;
+        }
+        bar.winSlots = fresh;
+        bar.nextSlot = n;
+        if (!pending) bar.addrRetries = 0;
+        if (!moved) return;
+        // move only the windows whose number changed; put focus back after
+        let focused = null;
+        for (const g of live) {
+            const w = bar.winOf(g.addr);
+            if (w && w.activated) focused = w;
+        }
+        for (const g of live) {
+            if (g.slot === fresh[g.addr]) continue;
+            const w = bar.winOf(g.addr);
+            if (!w) continue;
+            console.log("[spread] squeeze -> ws " + fresh[g.addr]);
+            w.activate();
+            Hyprland.dispatch("hl.dsp.window.move({ workspace = \"" + fresh[g.addr] + "\" })");
+        }
+        if (focused) focused.activate();
+    }
+
+    function winOf(addr) {
+        for (const app of bar.taskApps)
+            for (const w of app.toplevels)
+                if (bar.addrOf(w) === addr) return w;
+        return null;
     }
 
     // tray mute state (icon only; sliders live in quick settings)

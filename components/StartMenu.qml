@@ -280,19 +280,10 @@ PanelWindow {
                             anchors { fill: parent; margins: 6 }
                             spacing: 6
                             Item { Layout.fillHeight: true }
-                            // letter placeholder behind the icon: covers slow loads
-                            // and entries with no usable icon instead of a blank cell
                             Item {
                                 Layout.alignment: Qt.AlignHCenter
                                 Layout.preferredWidth: 40
                                 Layout.preferredHeight: 40
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: cell.modelData.name.charAt(0).toUpperCase()
-                                    color: Style.dim
-                                    font.pixelSize: 22
-                                    font.bold: true
-                                }
                                 Image {
                                     id: iconImg
                                     anchors.fill: parent
@@ -300,8 +291,16 @@ PanelWindow {
                                     source: Quickshell.iconPath(cell.modelData.icon, "application-x-executable")
                                     fillMode: Image.PreserveAspectFit
                                     asynchronous: true
-                                    // hide broken images instead of showing a blank frame
-                                    visible: status !== Image.Error
+                                }
+                                // last-resort letter: only when the icon is broken,
+                                // never layered under a good one
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: cell.modelData.name.charAt(0).toUpperCase()
+                                    color: Style.dim
+                                    font.pixelSize: 22
+                                    font.bold: true
+                                    visible: iconImg.status === Image.Error
                                 }
                             }
                             Text {
