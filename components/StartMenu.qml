@@ -8,7 +8,7 @@ PanelWindow {
     id: menu
 
     anchors { bottom: true; left: true }
-    margins { bottom: 56; left: 8 }
+    margins { bottom: Style.flyoutBottom; left: 8 }
     implicitWidth: Math.min(600, Math.max(480, Math.round(screen.width * 0.32)))
     implicitHeight: Math.min(Math.round(screen.height * 0.75), 620)
     color: "transparent"
@@ -17,24 +17,26 @@ PanelWindow {
     exclusionMode: ExclusionMode.Ignore
 
     // ---- same palette ----
-    readonly property color borderCol: "#2d2d2d"
-    readonly property color cardColor: "#1f1f1f"
-    readonly property color dimColor:  "#9a9cb5"
-    readonly property color green:     "#1e9e57"
-    readonly property color surface:   "#101010"
+    readonly property color borderCol: Style.border
+    readonly property color cardColor: Style.card
+    readonly property color dimColor: Style.dim
+    readonly property color green: Style.green
+    readonly property color surface: Style.surface
 
     property bool shown: false
     // true while the slide-out runs: card is visible but dead (no mask, no clicks)
     property bool closing: false
     property string query: ""
 
-    // filtered, sorted app list
+    // sorted once per app-database change, filtered per keystroke
+    // (GridView + ScriptModel keep delegates for unchanged rows)
+    readonly property var sortedApps: DesktopEntries.applications.values
+        .filter(e => !e.noDisplay)
+        .sort((a, b) => a.name.localeCompare(b.name))
     readonly property var apps: {
-        const all = DesktopEntries.applications.values.slice();
-        all.sort((a, b) => a.name.localeCompare(b.name));
         const q = menu.query.trim().toLowerCase();
-        if (q === "") return all;
-        return all.filter(e =>
+        if (q === "") return menu.sortedApps;
+        return menu.sortedApps.filter(e =>
             e.name.toLowerCase().includes(q) ||
             (e.genericName ?? "").toLowerCase().includes(q) ||
             (e.comment ?? "").toLowerCase().includes(q));
@@ -55,7 +57,7 @@ PanelWindow {
         target: card
         property: "y"
         to: 0
-        duration: 200
+        duration: Style.slideIn
         easing.type: Easing.OutCubic
     }
     NumberAnimation {
@@ -63,7 +65,7 @@ PanelWindow {
         target: card
         property: "y"
         to: menu.height
-        duration: 180
+        duration: Style.slideOut
         easing.type: Easing.InCubic
         onFinished: menu.closing = false
     }
@@ -91,8 +93,18 @@ PanelWindow {
     }
 
     function launch(entry) {
-        entry.execute();
+        if (entry.runInTerminal) {
+            // execute() won't open a terminal for Terminal=true apps
+            const argv = ["kitty", "-e"];
+            for (const a of entry.command) { argv.push(a); }
+            Quickshell.execDetached(argv);
+        } else {
+            entry.execute();
+        }
         BarState.startOpen = false;
+    }
+    function launchFirst() {
+        if (menu.apps.length > 0) menu.launch(menu.apps[grid.currentIndex]);
     }
 
     // ================= components =================
@@ -100,18 +112,27 @@ PanelWindow {
         id: pb
         property string icon
         property var cmd
-        property color hoverColor: "#2e2e2e"
+        // destructive buttons arm on first click (red ~3s), fire on second
+        property bool confirm: false
+        property bool armed: false
+        property color hoverColor: Style.cardHi
         Layout.preferredWidth: 40
         Layout.preferredHeight: 40
         radius: 12
-        color: pArea.containsMouse ? pb.hoverColor : menu.cardColor
+        color: pb.armed ? "#a33a45" : (pArea.containsMouse ? pb.hoverColor : menu.cardColor)
         Behavior on color { ColorAnimation { duration: 120 } }
+
+        Timer {
+            id: disarm
+            interval: 3000
+            onTriggered: pb.armed = false
+        }
 
         Rectangle {
             anchors.fill: parent
             radius: parent.radius
-            color: "white"
-            opacity: pArea.pressed ? 0.3 : 0
+            color: Style.text
+            opacity: pArea.pressed ? Style.press : 0
             Behavior on opacity { NumberAnimation { duration: 100 } }
         }
         Image {
@@ -126,6 +147,7 @@ PanelWindow {
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
             onClicked: {
+                if (pb.confirm && !pb.armed) { pb.armed = true; disarm.restart(); return; }
                 BarState.startOpen = false;
                 Quickshell.execDetached(pb.cmd);
             }
@@ -171,7 +193,7 @@ PanelWindow {
                     TextInput {
                         id: search
                         Layout.fillWidth: true
-                        color: "white"
+                        color: Style.text
                         font.pixelSize: 14
                         clip: true
                         selectByMouse: true
@@ -181,9 +203,8 @@ PanelWindow {
                         Keys.onUpPressed: grid.moveCurrentIndexUp()
                         Keys.onLeftPressed: event => { if (text === "") grid.moveCurrentIndexLeft(); else event.accepted = false; }
                         Keys.onRightPressed: event => { if (text === "") grid.moveCurrentIndexRight(); else event.accepted = false; }
-                        Keys.onReturnPressed: {
-                            if (menu.apps.length > 0) menu.launch(menu.apps[grid.currentIndex]);
-                        }
+                        Keys.onReturnPressed: menu.launchFirst()
+                        Keys.onEnterPressed: menu.launchFirst()
                         Text {
                             visible: search.text === ""
                             text: "Search apps"
@@ -202,7 +223,7 @@ PanelWindow {
                 clip: true
                 cellWidth: Math.floor(width / 5)
                 cellHeight: 92
-                model: menu.apps
+                model: ScriptModel { values: menu.apps }
                 currentIndex: 0
                 boundsBehavior: Flickable.StopAtBounds
                 cacheBuffer: cellHeight * 2
@@ -246,8 +267,8 @@ PanelWindow {
                         Rectangle {
                             anchors.fill: parent
                             radius: parent.radius
-                            color: "white"
-                            opacity: cArea.pressed ? 0.15 : 0
+                            color: Style.text
+                            opacity: cArea.pressed ? Style.press : 0
                             Behavior on opacity { NumberAnimation { duration: 100 } }
                         }
 
@@ -268,7 +289,7 @@ PanelWindow {
                                 Layout.fillWidth: true
                                 horizontalAlignment: Text.AlignHCenter
                                 text: cell.modelData.name
-                                color: "white"
+                                color: Style.text
                                 font.pixelSize: 11
                                 elide: Text.ElideRight
                             }
@@ -295,18 +316,18 @@ PanelWindow {
                     Layout.preferredHeight: 40
                     radius: 20
                     color: menu.green
-                    Text { anchors.centerIn: parent; text: "S"; color: "white"; font.pixelSize: 16; font.bold: true }
+                    Text { anchors.centerIn: parent; text: "S"; color: Style.text; font.pixelSize: 16; font.bold: true }
                 }
                 Text {
                     Layout.fillWidth: true
                     text: "saad"
-                    color: "white"
+                    color: Style.text
                     font.pixelSize: 13
                     font.bold: true
                 }
                 PowerButton { icon: "lock"; cmd: ["loginctl", "lock-session"] }
-                PowerButton { icon: "rotate-cw"; cmd: ["systemctl", "reboot"] }
-                PowerButton { icon: "power"; cmd: ["systemctl", "poweroff"]; hoverColor: "#a33a45" }
+                PowerButton { icon: "rotate-cw"; cmd: ["systemctl", "reboot"]; confirm: true }
+                PowerButton { icon: "power"; cmd: ["systemctl", "poweroff"]; confirm: true; hoverColor: "#a33a45" }
             }
         }
     }

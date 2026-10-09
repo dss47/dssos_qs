@@ -1,5 +1,6 @@
 singleton BarState BarState.qml
 singleton ContextMenuState ContextMenuState.qml
+singleton Style Style.qml
 Taskbar Taskbar.qml
 QuickSettings QuickSettings.qml
 StartMenu StartMenu.qml

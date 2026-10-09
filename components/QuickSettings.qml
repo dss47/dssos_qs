@@ -10,7 +10,7 @@ PanelWindow {
     id: quick
 
     anchors { bottom: true; right: true }
-    margins { bottom: 56; right: 8 }     // 8px gap above the bar, card slides in from the right
+    margins { bottom: Style.flyoutBottom; right: 8 }     // 8px gap above the bar, card slides in from the right
     // panel width follows screen: 22%, clamped so it never gets tiny or huge
     implicitWidth: Math.min(480, Math.max(380, Math.round(screen.width * 0.30)))
     implicitHeight: Math.min(Math.round(screen.height * 0.7), content.implicitHeight + 32)
@@ -22,13 +22,13 @@ PanelWindow {
     exclusionMode: ExclusionMode.Ignore
 
     // ---- same palette as the bar ----
-    readonly property color borderCol: "#2d2d2d"
-    readonly property color cardColor: "#1f1f1f"
-    readonly property color textColor: "#ffffff"
-    readonly property color dimColor:  "#9a9cb5"
-    readonly property color green:     "#1e9e57"
-    readonly property color amber:     "#bd8f2a"
-    readonly property color surface:   "#101010"
+    readonly property color borderCol: Style.border
+    readonly property color cardColor: Style.card
+    readonly property color textColor: Style.text
+    readonly property color dimColor: Style.dim
+    readonly property color green: Style.green
+    readonly property color amber: Style.amber
+    readonly property color surface: Style.surface
 
     // ---- state ----
     property bool wifiOn: true
@@ -39,6 +39,18 @@ PanelWindow {
     property bool saverOn: false
     property string page: "main"
     property real brightVal: 0.7
+    // coalesces slider drags into at most one brightnessctl per 60ms
+    property real pendingBright: -1
+    Timer {
+        id: brightTimer
+        interval: 60
+        onTriggered: {
+            if (quick.pendingBright >= 0) {
+                Quickshell.execDetached(["brightnessctl", "set", Math.max(1, Math.round(quick.pendingBright * 100)) + "%"]);
+                quick.pendingBright = -1;
+            }
+        }
+    }
 
     readonly property var sink: Pipewire.defaultAudioSink
     readonly property real volVal: sink?.audio ? sink.audio.volume : 0
@@ -65,7 +77,7 @@ PanelWindow {
         target: card
         property: "y"
         to: 0                      // no 'from': continues from current y if interrupted
-        duration: 300
+        duration: Style.slideIn
         easing.type: Easing.OutCubic
     }
     NumberAnimation {
@@ -73,7 +85,7 @@ PanelWindow {
         target: card
         property: "y"
         to: quick.height           // fully below the window's bottom edge
-        duration: 280
+        duration: Style.slideOut
         easing.type: Easing.InCubic
         onFinished: quick.closing = false
     }
@@ -86,7 +98,7 @@ PanelWindow {
                 // reset offscreen only if fully gone; mid-close reopens glide back
                 if (!quick.shown && !quick.closing) card.y = quick.height;
                 quick.closing = false;
-                quick.page = "main"; wifiRead.running = true; brightRead.running = true;
+                quick.page = "main"; wifiRead.running = true; btRead.running = true; brightRead.running = true;
                 quick.shown = true;
                 openAnim.restart();
             } else if (quick.shown) {
@@ -100,8 +112,13 @@ PanelWindow {
 
     Process {
         id: wifiRead
-        command: ["nmcli", "radio", "wifi"]
+        command: ["env", "LC_ALL=C", "nmcli", "radio", "wifi"]
         stdout: StdioCollector { onStreamFinished: quick.wifiOn = text.trim() === "enabled" }
+    }
+    Process {
+        id: btRead
+        command: ["sh", "-c", "bluetoothctl show | grep -q 'Powered: yes' && echo yes || echo no"]
+        stdout: StdioCollector { onStreamFinished: quick.btOn = text.trim() === "yes" }
     }
     Process {
         id: brightRead
@@ -125,21 +142,14 @@ PanelWindow {
         Layout.fillWidth: true
         Layout.preferredHeight: 64
         radius: 12
-        color: "#1f1f1f"
+        color: tile.active ? Style.green : Style.card
 
-        // active state: flat muted green, no gradient
+        // hover + press effect
         Rectangle {
             anchors.fill: parent
             radius: parent.radius
-            visible: tile.active
-            color: "#1e9e57"
-        }
-        // press effect, no hover
-        Rectangle {
-            anchors.fill: parent
-            radius: parent.radius
-            color: "white"
-            opacity: area.pressed ? 0.3 : 0
+            color: Style.text
+            opacity: area.pressed ? Style.press : (area.containsMouse ? Style.hover : 0)
             Behavior on opacity { NumberAnimation { duration: 100 } }
         }
 
@@ -154,12 +164,14 @@ PanelWindow {
             anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 6 }
             visible: tile.more
             width: 4; height: 4; radius: 2
-            color: "white"
+            color: Style.text
             opacity: 0.7
         }
         MouseArea {
             id: area
             anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
             acceptedButtons: Qt.LeftButton | Qt.RightButton
             onClicked: mouse => tile.clicked(mouse)
         }
@@ -176,11 +188,11 @@ PanelWindow {
         Layout.fillWidth: true
         Layout.preferredHeight: 48
         radius: 24
-        color: "#1f1f1f"
+        color: Style.card
         clip: true
 
         Rectangle {
-            width: Math.max(pill.height, pill.width * pill.value)
+            width: pill.value <= 0 ? 0 : Math.max(pill.height, pill.width * pill.value)
             height: parent.height
             radius: pill.radius
             color: pill.fillColor
@@ -191,18 +203,21 @@ PanelWindow {
             sourceSize.width: 32; sourceSize.height: 32
             source: "../assets/icons/" + pill.icon + ".svg"
         }
+        // single area: drag anywhere to slide, tap the icon to mute.
+        // the old stacked areas ate the left ~11% of presses.
         MouseArea {
             anchors.fill: parent
             cursorShape: Qt.PointingHandCursor
-            onPressed: mouse => pill.moved(Math.max(0, Math.min(1, mouse.x / width)))
-            onPositionChanged: mouse => { if (pressed) pill.moved(Math.max(0, Math.min(1, mouse.x / width))) }
-        }
-        // icon hit area (mute)
-        MouseArea {
-            anchors { left: parent.left; top: parent.top; bottom: parent.bottom }
-            width: 44
-            cursorShape: Qt.PointingHandCursor
-            onClicked: pill.iconClicked()
+            property bool fromIcon: false
+            property bool dragged: false
+            function v(x) { return Math.max(0, Math.min(1, x / width)); }
+            onPressed: mouse => { fromIcon = mouse.x < 44; dragged = false; if (!fromIcon) { pill.moved(v(mouse.x)); } }
+            onPositionChanged: mouse => {
+                if (!pressed) { return; }
+                if (fromIcon && Math.abs(mouse.x - 22) > 8) { dragged = true; }
+                if (!fromIcon || dragged) { pill.moved(v(mouse.x)); }
+            }
+            onReleased: { if (fromIcon && !dragged) { pill.iconClicked(); } }
         }
     }
 
@@ -213,22 +228,22 @@ PanelWindow {
         Layout.fillWidth: true
         Layout.preferredHeight: 54
         radius: 10
-        color: "#1f1f1f"
+        color: Style.card
         RowLayout {
             anchors { fill: parent; margins: 10 }
             spacing: 10
             Rectangle {
                 Layout.preferredWidth: 30; Layout.preferredHeight: 30
-                radius: 8; color: "#2e2e2e"
+                radius: 8; color: Style.cardHi
                 Image { anchors.centerIn: parent; width: 14; height: 14; sourceSize.width: 28; sourceSize.height: 28; source: "../assets/icons/" + icon + ".svg" }
             }
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 0
-                Text { text: title; color: "white"; font.pixelSize: 12; font.bold: true }
+                Text { text: title; color: Style.text; font.pixelSize: 12; font.bold: true }
                 Text {
                     Layout.fillWidth: true
-                    text: body; color: "#9a9cb5"; font.pixelSize: 11
+                    text: body; color: Style.dim; font.pixelSize: 11
                     elide: Text.ElideRight
                 }
             }
@@ -243,6 +258,8 @@ PanelWindow {
         y: quick.height
         visible: quick.shown || quick.closing
         enabled: quick.shown && !quick.closing
+        focus: true
+        Keys.onEscapePressed: BarState.quickOpen = false
 
     // ================= surface (flat, no gradient) =================
     Rectangle {
@@ -287,6 +304,8 @@ PanelWindow {
                 onClicked: {
                     quick.planeOn = !quick.planeOn;
                     Quickshell.execDetached(["rfkill", quick.planeOn ? "block" : "unblock", "all"]);
+                    // rfkill kills the radios: reflect it until the next read corrects us
+                    if (quick.planeOn) { quick.wifiOn = false; quick.btOn = false; }
                 }
             }
             Tile {
@@ -319,21 +338,37 @@ PanelWindow {
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
-                Image {
-                    Layout.preferredWidth: 18; Layout.preferredHeight: 18
-                    sourceSize.width: 36; sourceSize.height: 36
-                    source: "../assets/icons/chevron-left.svg"
-                    MouseArea { anchors.fill: parent; onClicked: quick.page = "main" }
+                Item {
+                    Layout.preferredWidth: 32; Layout.preferredHeight: 32
+                    Rectangle {
+                        anchors.centerIn: parent; width: 30; height: 30; radius: 8
+                        color: Style.text; opacity: wifiBack.pressed ? Style.press : (wifiBack.containsMouse ? Style.hover : 0)
+                        Behavior on opacity { NumberAnimation { duration: 100 } }
+                    }
+                    Image {
+                        anchors.centerIn: parent
+                        width: 18; height: 18
+                        sourceSize.width: 36; sourceSize.height: 36
+                        source: "../assets/icons/chevron-left.svg"
+                    }
+                    MouseArea {
+                        id: wifiBack
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: quick.page = "main"
+                    }
                 }
-                Text { text: "Wi-Fi"; color: "white"; font.pixelSize: 15; font.bold: true; Layout.fillWidth: true }
+                Text { text: "Wi-Fi"; color: Style.text; font.pixelSize: 15; font.bold: true; Layout.fillWidth: true }
                 Rectangle {
                     Layout.preferredWidth: 46; Layout.preferredHeight: 26; radius: 13
-                    color: quick.wifiOn ? "#1e9e57" : "#2e2e2e"
+                    color: quick.wifiOn ? Style.green : Style.cardHi
                     Rectangle {
-                        x: quick.wifiOn ? 22 : 2; y: 2; width: 22; height: 22; radius: 11; color: "white"
+                        x: quick.wifiOn ? 22 : 2; y: 2; width: 22; height: 22; radius: 11; color: Style.text
                     }
                     MouseArea {
                         anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             quick.wifiOn = !quick.wifiOn;
                             Quickshell.execDetached(["nmcli", "radio", "wifi", quick.wifiOn ? "on" : "off"]);
@@ -347,14 +382,8 @@ PanelWindow {
                 contentHeight: wifiList.height
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
-                WheelHandler {
-                    acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
-                    onWheel: event => {
-                        const maxY = Math.max(0, parent.contentHeight - parent.height);
-                        parent.contentY = Math.max(0, Math.min(maxY, parent.contentY - event.angleDelta.y));
-                        event.accepted = true;
-                    }
-                }
+                // native wheel scrolling (the old handler read parent.contentY,
+                // which is the content item, not the Flickable)
                 Column {
                     id: wifiList
                     width: parent.width
@@ -368,16 +397,27 @@ PanelWindow {
                         delegate: Rectangle {
                             required property var modelData
                             width: wifiList.width; height: 44; radius: 10
-                            color: "#1f1f1f"
+                            color: Style.card
+                            Rectangle {
+                                anchors.fill: parent; radius: 10; color: Style.text
+                                opacity: wifiRow.pressed ? Style.press : (wifiRow.containsMouse ? Style.hover : 0)
+                                Behavior on opacity { NumberAnimation { duration: 100 } }
+                            }
                             RowLayout {
                                 anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
                                 spacing: 8
-                                Text { text: parent.parent.modelData.name; color: "white"; font.pixelSize: 13; Layout.fillWidth: true }
-                                Text { text: parent.parent.modelData.sig; color: "#9a9cb5"; font.pixelSize: 12 }
+                                Text { text: parent.parent.modelData.name; color: Style.text; font.pixelSize: 13; Layout.fillWidth: true }
+                                Text { text: parent.parent.modelData.sig; color: Style.dim; font.pixelSize: 12 }
                                 Image { visible: parent.parent.modelData.lock; width: 10; height: 10; sourceSize.width: 20; sourceSize.height: 20; source: "../assets/icons/lock.svg" }
-                                Text { text: parent.parent.modelData.cur ? "●" : ""; color: "#1e9e57"; font.pixelSize: 12 }
+                                Text { text: parent.parent.modelData.cur ? "●" : ""; color: Style.green; font.pixelSize: 12 }
                             }
-                            MouseArea { anchors.fill: parent; onClicked: console.log(parent.modelData.name + " connect (later)") }
+                            MouseArea {
+                                id: wifiRow
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: console.log(parent.modelData.name + " connect (later)")
+                            }
                         }
                     }
                 }
@@ -392,21 +432,37 @@ PanelWindow {
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
-                Image {
-                    Layout.preferredWidth: 18; Layout.preferredHeight: 18
-                    sourceSize.width: 36; sourceSize.height: 36
-                    source: "../assets/icons/chevron-left.svg"
-                    MouseArea { anchors.fill: parent; onClicked: quick.page = "main" }
+                Item {
+                    Layout.preferredWidth: 32; Layout.preferredHeight: 32
+                    Rectangle {
+                        anchors.centerIn: parent; width: 30; height: 30; radius: 8
+                        color: Style.text; opacity: btBack.pressed ? Style.press : (btBack.containsMouse ? Style.hover : 0)
+                        Behavior on opacity { NumberAnimation { duration: 100 } }
+                    }
+                    Image {
+                        anchors.centerIn: parent
+                        width: 18; height: 18
+                        sourceSize.width: 36; sourceSize.height: 36
+                        source: "../assets/icons/chevron-left.svg"
+                    }
+                    MouseArea {
+                        id: btBack
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: quick.page = "main"
+                    }
                 }
-                Text { text: "Bluetooth"; color: "white"; font.pixelSize: 15; font.bold: true; Layout.fillWidth: true }
+                Text { text: "Bluetooth"; color: Style.text; font.pixelSize: 15; font.bold: true; Layout.fillWidth: true }
                 Rectangle {
                     Layout.preferredWidth: 46; Layout.preferredHeight: 26; radius: 13
-                    color: quick.btOn ? "#1e9e57" : "#2e2e2e"
+                    color: quick.btOn ? Style.green : Style.cardHi
                     Rectangle {
-                        x: quick.btOn ? 22 : 2; y: 2; width: 22; height: 22; radius: 11; color: "white"
+                        x: quick.btOn ? 22 : 2; y: 2; width: 22; height: 22; radius: 11; color: Style.text
                     }
                     MouseArea {
                         anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             quick.btOn = !quick.btOn;
                             Quickshell.execDetached(["bluetoothctl", "power", quick.btOn ? "on" : "off"]);
@@ -420,14 +476,7 @@ PanelWindow {
                 contentHeight: btList.height
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
-                WheelHandler {
-                    acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
-                    onWheel: event => {
-                        const maxY = Math.max(0, parent.contentHeight - parent.height);
-                        parent.contentY = Math.max(0, Math.min(maxY, parent.contentY - event.angleDelta.y));
-                        event.accepted = true;
-                    }
-                }
+                // native wheel scrolling (see wifi list)
                 Column {
                     id: btList
                     width: parent.width
@@ -441,15 +490,26 @@ PanelWindow {
                         delegate: Rectangle {
                             required property var modelData
                             width: btList.width; height: 44; radius: 10
-                            color: "#1f1f1f"
+                            color: Style.card
+                            Rectangle {
+                                anchors.fill: parent; radius: 10; color: Style.text
+                                opacity: btRow.pressed ? Style.press : (btRow.containsMouse ? Style.hover : 0)
+                                Behavior on opacity { NumberAnimation { duration: 100 } }
+                            }
                             RowLayout {
                                 anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
                                 spacing: 8
                                 Image { width: 14; height: 14; sourceSize.width: 28; sourceSize.height: 28; source: "../assets/icons/bluetooth.svg"; opacity: 0.7 }
-                                Text { text: parent.parent.modelData.name; color: "white"; font.pixelSize: 13; Layout.fillWidth: true }
-                                Text { text: parent.parent.modelData.cur ? "●" : ""; color: "#1e9e57"; font.pixelSize: 12 }
+                                Text { text: parent.parent.modelData.name; color: Style.text; font.pixelSize: 13; Layout.fillWidth: true }
+                                Text { text: parent.parent.modelData.cur ? "●" : ""; color: Style.green; font.pixelSize: 12 }
                             }
-                            MouseArea { anchors.fill: parent; onClicked: console.log(parent.modelData.name + " pair (later)") }
+                            MouseArea {
+                                id: btRow
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: console.log(parent.modelData.name + " pair (later)")
+                            }
                         }
                     }
                 }
@@ -464,7 +524,8 @@ PanelWindow {
             fillColor: quick.amber
             onMoved: v => {
                 quick.brightVal = v;
-                Quickshell.execDetached(["brightnessctl", "set", Math.max(1, Math.round(v * 100)) + "%"]);
+                quick.pendingBright = v;
+                if (!brightTimer.running) brightTimer.start();
             }
         }
         SliderPill {

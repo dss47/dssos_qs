@@ -84,9 +84,9 @@ PanelWindow {
         Rectangle {
             anchors.fill: parent
             radius: 14
-            color: "#101010"
+            color: Style.surface
             border.width: 1
-            border.color: "#2d2d2d"
+            border.color: Style.border
         }
 
         Flickable {
@@ -106,71 +106,75 @@ PanelWindow {
                     verticalAlignment: Text.AlignVCenter
                     leftPadding: 12
                     text: ContextMenuState.title
-                    color: "#9a9cb5"
+                    color: Style.dim
                     font.pixelSize: 12
                     font.bold: true
                     elide: Text.ElideRight
                 }
                 Repeater {
-                    model: ContextMenuState.labels.length
+                    model: ContextMenuState.rowsModel
                     delegate: Item {
                         required property int index
-                        property string rowKind: ContextMenuState.kinds[index] ?? "row"
-                        property bool rowEnabled: ContextMenuState.enableds[index] ?? false
+                        required property string label
+                        required property string icon
+                        required property string hint
+                        required property bool danger
+                        required property bool ison
+                        required property string kind
                         width: list.width
-                        height: rowKind === "sep" ? 9 : 36
+                        height: kind === "sep" ? 9 : 36
 
                         // separator line
                         Rectangle {
-                            visible: rowKind === "sep"
+                            visible: kind === "sep"
                             anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; leftMargin: 12; rightMargin: 12 }
                             height: 1
-                            color: "white"
+                            color: Style.text
                             opacity: 0.1
                         }
 
                         // action row
                         Rectangle {
-                            visible: rowKind !== "sep"
+                            visible: kind !== "sep"
                             anchors.fill: parent
                             radius: 8
-                            color: "#ffffff"
-                            opacity: (rowEnabled && (rowMouse.containsMouse || rowMouse.pressed)) ? 0.15 : 0
+                            color: Style.text
+                            opacity: (ison && (rowMouse.containsMouse || rowMouse.pressed)) ? 0.15 : 0
                             Behavior on opacity { NumberAnimation { duration: 80 } }
 
                             RowLayout {
                                 anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
                                 spacing: 10
                                 Image {
-                                    visible: (ContextMenuState.icons[index] ?? "") !== ""
+                                    visible: icon !== ""
                                     Layout.preferredWidth: 15
                                     Layout.preferredHeight: 15
                                     sourceSize.width: 30
                                     sourceSize.height: 30
-                                    source: (ContextMenuState.icons[index] ?? "") !== "" ? "../assets/icons/" + ContextMenuState.icons[index] + ".svg" : ""
+                                    source: icon !== "" ? "../assets/icons/" + icon + ".svg" : ""
                                 }
                                 Text {
                                     Layout.fillWidth: true
-                                    text: ContextMenuState.labels[index] ?? ""
-                                    color: (ContextMenuState.dangers[index] ?? false) ? "#e05561" : "#ffffff"
+                                    text: label
+                                    color: danger ? Style.danger : (ison ? Style.text : "#8a8a8a")
                                     font.pixelSize: 13
                                     elide: Text.ElideRight
                                 }
                                 // shortcut hint pill, like ⌘C
                                 Rectangle {
-                                    visible: (ContextMenuState.hints[index] ?? "") !== ""
+                                    visible: hint !== ""
                                     Layout.preferredWidth: hintText.implicitWidth + 12
                                     Layout.preferredHeight: 20
                                     radius: 6
                                     color: "transparent"
                                     border.width: 1
-                                    border.color: "#ffffff"
+                                    border.color: Style.text
                                     opacity: 0.35
                                     Text {
                                         id: hintText
                                         anchors.centerIn: parent
-                                        text: ContextMenuState.hints[index] ?? ""
-                                        color: "#ffffff"
+                                        text: hint
+                                        color: Style.text
                                         font.pixelSize: 11
                                     }
                                 }
@@ -179,7 +183,7 @@ PanelWindow {
                                 id: rowMouse
                                 anchors.fill: parent
                                 hoverEnabled: true
-                                enabled: rowEnabled
+                                enabled: ison
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: ContextMenuState.fire(index)
                             }

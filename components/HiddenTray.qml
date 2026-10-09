@@ -8,8 +8,12 @@ import Quickshell.Hyprland
 PanelWindow {
     id: hidden
 
-    anchors { bottom: true; right: true }
-    margins { bottom: 56; right: 80 }
+    // anchored under the chevron like the context menu (no magic right offset)
+    anchors { bottom: true; left: true }
+    margins {
+        bottom: Style.flyoutBottom
+        left: Math.max(8, Math.min(BarState.hiddenX - hidden.implicitWidth / 2, screen.width - hidden.implicitWidth - 8))
+    }
     implicitWidth: contentRow.implicitWidth + 24
     implicitHeight: 52
     color: "transparent"
@@ -35,7 +39,7 @@ PanelWindow {
         target: card
         property: "y"
         to: 0
-        duration: 200
+        duration: Style.slideIn
         easing.type: Easing.OutCubic
     }
     NumberAnimation {
@@ -43,7 +47,7 @@ PanelWindow {
         target: card
         property: "y"
         to: hidden.height
-        duration: 180
+        duration: Style.slideOut
         easing.type: Easing.InCubic
         onFinished: hidden.closing = false
     }
@@ -74,13 +78,15 @@ PanelWindow {
         y: hidden.height
         visible: hidden.shown || hidden.closing
         enabled: hidden.shown && !hidden.closing
+        focus: true
+        Keys.onEscapePressed: BarState.hiddenOpen = false
 
         Rectangle {
             anchors.fill: parent
             radius: 14
-            color: "#101010"
+            color: Style.surface
             border.width: 1
-            border.color: "#2d2d2d"
+            border.color: Style.border
         }
 
         RowLayout {
@@ -96,8 +102,8 @@ PanelWindow {
                     Rectangle {
                         anchors.centerIn: parent
                         width: 32; height: 32; radius: 8
-                        color: "white"
-                        opacity: (hMouse.containsMouse || hMouse.pressed) ? 0.3 : 0
+                        color: Style.text
+                        opacity: hMouse.pressed ? Style.press : (hMouse.containsMouse ? Style.hover : 0)
                         Behavior on opacity { NumberAnimation { duration: 100 } }
                     }
                     Image {
