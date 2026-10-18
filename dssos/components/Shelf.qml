@@ -37,6 +37,7 @@ PanelWindow {
     OutsideClick {
         targetLayer: WlrLayer.Top
         visible: shelfWin.shelfOpen
+        bottomMargin: shelfWin.shelfHeight + 48
         onClicked: shelfWin.closeShelf()
     }
 

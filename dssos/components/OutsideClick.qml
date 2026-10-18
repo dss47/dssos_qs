@@ -13,6 +13,18 @@ PanelWindow {
         left: true
         right: true
     }
+    property real bottomMargin: 0
+    property real topMargin: 0
+    property real leftMargin: 0
+    property real rightMargin: 0
+
+    margins {
+        top: catcher.topMargin
+        bottom: catcher.bottomMargin
+        left: catcher.leftMargin
+        right: catcher.rightMargin
+    }
+
     property int targetLayer: WlrLayer.Bottom
     color: "transparent"
     WlrLayershell.layer: targetLayer

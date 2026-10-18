@@ -148,10 +148,10 @@ PanelWindow {
                 Image {
                     id: logoImg
                     anchors.centerIn: parent
-                    width: 28
-                    height: 28
-                    sourceSize.width: 56
-                    sourceSize.height: 56
+                    width: 32
+                    height: 32
+                    sourceSize.width: 64
+                    sourceSize.height: 64
                     source: "../assets/logo.png"
                     fillMode: Image.PreserveAspectFit
                     smooth: true
@@ -219,7 +219,7 @@ PanelWindow {
 
                             IconImage {
                                 anchors.centerIn: parent
-                                implicitSize: 24
+                                implicitSize: 32
                                 source: Quickshell.iconPath(entry?.icon ?? appId.toLowerCase(), "application-x-executable")
                                 asynchronous: true
                             }
