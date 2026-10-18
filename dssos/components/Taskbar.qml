@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Wayland
+import Quickshell.Io
 import Quickshell.Widgets
 import Quickshell.Services.Pipewire
 import Quickshell.Networking
@@ -25,7 +26,7 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Top
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
 
-    readonly property real barHeight: 40
+    readonly property real barHeight: 48
     implicitHeight: barHeight
     exclusiveZone: barHeight
     exclusionMode: ExclusionMode.Normal
@@ -79,16 +80,46 @@ PanelWindow {
     readonly property bool audioMuted: audioSink?.audio ? audioSink.audio.muted : false
     PwObjectTracker { objects: [bar.audioSink] }
 
-    readonly property var wifiDev: {
-        for (const d of Networking.devices.values) { if (d.type === DeviceType.Wifi) return d; }
-        return null;
+    // Dynamic network & signal reading
+    property bool netConnected: false
+    property string netSsid: ""
+    property int netSignal: 0
+    property string netIcon: "wf0"
+
+    Process {
+        id: netRead
+        command: ["sh", "-c", "w=$(nmcli -t -f active,ssid,signal dev wifi 2>/dev/null | grep '^yes:' | head -n 1); if [ -n \"$w\" ]; then echo \"wifi:$w\"; else eth=$(nmcli -t -f type,state dev 2>/dev/null | grep 'connected' | head -n 1); if [ -n \"$eth\" ]; then echo \"ethernet:yes:Connected:100\"; else echo \"none:no:Disconnected:0\"; fi; fi"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const parts = text.trim().split(":");
+                if (parts.length >= 4 && parts[1] === "yes") {
+                    bar.netConnected = true;
+                    bar.netSsid = parts[2];
+                    const sig = parseInt(parts[3]) || 0;
+                    bar.netSignal = sig;
+                    if (sig >= 80) bar.netIcon = "wf4";
+                    else if (sig >= 55) bar.netIcon = "wf3";
+                    else if (sig >= 30) bar.netIcon = "wf2";
+                    else if (sig > 0) bar.netIcon = "wf1";
+                    else bar.netIcon = "wf0";
+                } else {
+                    bar.netConnected = false;
+                    bar.netSsid = "Disconnected";
+                    bar.netSignal = 0;
+                    bar.netIcon = "wf0";
+                }
+            }
+        }
     }
-    readonly property var activeWifi: {
-        if (!wifiDev) return null;
-        for (const n of wifiDev.networks.values) { if (n.connected) return n; }
-        return null;
+
+    Timer {
+        interval: 8000
+        repeat: true
+        running: true
+        onTriggered: netRead.running = true
     }
-    readonly property bool wifiUp: Networking.wifiEnabled && !!activeWifi
+
+    Component.onCompleted: netRead.running = true
 
     Rectangle {
         id: taskbarRow
@@ -110,17 +141,17 @@ PanelWindow {
 
             // ----------------- Logo Button (.lg)
             Rectangle {
-                Layout.preferredWidth: 40
-                Layout.preferredHeight: 40
+                Layout.preferredWidth: 44
+                Layout.preferredHeight: 48
                 color: BarState.startOpen ? bar.cSel : (logoMouse.containsMouse ? bar.cHover : "transparent")
 
                 Image {
                     id: logoImg
                     anchors.centerIn: parent
-                    width: 22
-                    height: 22
-                    sourceSize.width: 44
-                    sourceSize.height: 44
+                    width: 24
+                    height: 24
+                    sourceSize.width: 48
+                    sourceSize.height: 48
                     source: "../assets/logo.png"
                     fillMode: Image.PreserveAspectFit
                     smooth: true
@@ -147,7 +178,7 @@ PanelWindow {
                 id: appsContainer
                 Layout.leftMargin: 4
                 Layout.preferredWidth: appsRow.width
-                Layout.preferredHeight: 40
+                Layout.preferredHeight: 48
 
                 // Ink active indicator
                 Rectangle {
@@ -169,7 +200,7 @@ PanelWindow {
 
                 Row {
                     id: appsRow
-                    height: 40
+                    height: 48
                     spacing: 0
 
                     Repeater {
@@ -183,12 +214,12 @@ PanelWindow {
                             property var entry: modelData.entry
 
                             width: 44
-                            height: 40
+                            height: 48
                             color: appMouse.containsMouse ? bar.cHover : "transparent"
 
                             IconImage {
                                 anchors.centerIn: parent
-                                implicitSize: 20
+                                implicitSize: 24
                                 source: Quickshell.iconPath(entry?.icon ?? appId.toLowerCase(), "application-x-executable")
                                 asynchronous: true
                             }
@@ -262,7 +293,7 @@ PanelWindow {
             // ----------------- Status Indicators (.st)
             Rectangle {
                 id: stBox
-                Layout.preferredHeight: 40
+                Layout.preferredHeight: 48
                 Layout.preferredWidth: stRow.implicitWidth + 28
                 color: BarState.quickOpen ? bar.cSel : (stMouse.containsMouse ? bar.cHover : "transparent")
 
@@ -277,9 +308,9 @@ PanelWindow {
                         Layout.preferredWidth: 16
                         Layout.preferredHeight: 16
                         Layout.alignment: Qt.AlignVCenter
-                        name: "wf"
-                        color: stBox.stColor
-                        opacity: bar.wifiUp ? 1.0 : 0.6
+                        name: bar.netIcon
+                        color: "#ffffff"
+                        opacity: bar.netConnected ? 1.0 : 0.4
                         iconSize: 16
                     }
 
@@ -288,7 +319,7 @@ PanelWindow {
                         Layout.preferredHeight: 16
                         Layout.alignment: Qt.AlignVCenter
                         name: "vl"
-                        color: stBox.stColor
+                        color: "#ffffff"
                         opacity: !bar.audioMuted ? 1.0 : 0.6
                         iconSize: 16
                     }
@@ -298,7 +329,7 @@ PanelWindow {
                         Layout.preferredHeight: 16
                         Layout.alignment: Qt.AlignVCenter
                         name: "bt"
-                        color: stBox.stColor
+                        color: "#ffffff"
                         iconSize: 16
                     }
                 }
@@ -320,7 +351,7 @@ PanelWindow {
 
             // ----------------- Clock (.tm)
             Rectangle {
-                Layout.preferredHeight: 40
+                Layout.preferredHeight: 48
                 Layout.preferredWidth: tmText.implicitWidth + 32
                 color: BarState.quickOpen ? bar.cSel : (tmMouse.containsMouse ? bar.cHover : "transparent")
 
@@ -328,7 +359,7 @@ PanelWindow {
                     id: tmText
                     anchors.centerIn: parent
                     text: Qt.formatTime(clock.date, "hh:mm")
-                    color: (BarState.quickOpen || tmMouse.containsMouse) ? bar.cText : bar.cMuted
+                    color: "#ffffff"
                     font.pixelSize: 13
                 }
 

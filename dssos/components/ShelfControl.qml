@@ -81,18 +81,44 @@ Item {
         stdout: StdioCollector { onStreamFinished: root.btActive = text.trim() === "yes" }
     }
 
-    // Real Wi-Fi state
-    readonly property var wifiDev: {
-        for (const d of Networking.devices.values) { if (d.type === DeviceType.Wifi) return d; }
-        return null;
+    // Real Network & Signal state
+    property bool wifiConnected: false
+    property string wifiSsid: "Disconnected"
+    property int wifiSignal: 0
+    property string wifiIconName: "wf0"
+
+    Process {
+        id: netRead
+        command: ["sh", "-c", "w=$(nmcli -t -f active,ssid,signal dev wifi 2>/dev/null | grep '^yes:' | head -n 1); if [ -n \"$w\" ]; then echo \"wifi:$w\"; else eth=$(nmcli -t -f type,state dev 2>/dev/null | grep 'connected' | head -n 1); if [ -n \"$eth\" ]; then echo \"ethernet:yes:Connected:100\"; else echo \"none:no:Disconnected:0\"; fi; fi"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const parts = text.trim().split(":");
+                if (parts.length >= 4 && parts[1] === "yes") {
+                    root.wifiConnected = true;
+                    root.wifiSsid = parts[2];
+                    const sig = parseInt(parts[3]) || 0;
+                    root.wifiSignal = sig;
+                    if (sig >= 80) root.wifiIconName = "wf4";
+                    else if (sig >= 55) root.wifiIconName = "wf3";
+                    else if (sig >= 30) root.wifiIconName = "wf2";
+                    else if (sig > 0) root.wifiIconName = "wf1";
+                    else root.wifiIconName = "wf0";
+                } else {
+                    root.wifiConnected = false;
+                    root.wifiSsid = "Disconnected";
+                    root.wifiSignal = 0;
+                    root.wifiIconName = "wf0";
+                }
+            }
+        }
     }
-    readonly property var activeWifi: {
-        if (!wifiDev) return null;
-        for (const n of wifiDev.networks.values) { if (n.connected) return n; }
-        return null;
+
+    Timer {
+        interval: 8000
+        repeat: true
+        running: true
+        onTriggered: netRead.running = true
     }
-    readonly property bool wifiUp: Networking.wifiEnabled && !!activeWifi
-    readonly property string wifiSsid: activeWifi?.ssid ?? (Networking.wifiEnabled ? "Connected" : "Disconnected")
 
     // Real Battery reading
     property bool batteryPresent: false
@@ -123,6 +149,7 @@ Item {
         btRead.running = true;
         powerRead.running = true;
         batRead.running = true;
+        netRead.running = true;
     }
 
     component WideTile: Rectangle {
@@ -272,12 +299,13 @@ Item {
 
                     // 1. Wi-Fi
                     WideTile {
-                        iconName: "wf"
+                        iconName: root.wifiIconName
                         title: "Wi-Fi"
-                        subtitle: root.wifiSsid
-                        active: Networking.wifiEnabled
+                        subtitle: root.wifiSsid + (root.wifiSignal > 0 ? (" · " + root.wifiSignal + "%") : "")
+                        active: root.wifiConnected || Networking.wifiEnabled
                         onClicked: {
                             Networking.wifiEnabled = !Networking.wifiEnabled;
+                            netRead.running = true;
                         }
                     }
 
