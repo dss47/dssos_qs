@@ -193,25 +193,6 @@ PanelWindow {
                                 asynchronous: true
                             }
 
-                            // Running indicators: small pills/dots under open windows
-                            Row {
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                anchors.bottom: parent.bottom
-                                anchors.bottomMargin: 2
-                                spacing: 2
-                                visible: wins.length > 0
-
-                                Repeater {
-                                    model: Math.min(wins.length, 5)
-                                    delegate: Rectangle {
-                                        required property int index
-                                        width: wins.length === 1 ? 6 : 3
-                                        height: 2
-                                        color: (wins[index] && wins[index].activated) ? bar.cGreen : "#777777"
-                                    }
-                                }
-                            }
-
                             MouseArea {
                                 id: appMouse
                                 anchors.fill: parent
