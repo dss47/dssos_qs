@@ -7,6 +7,7 @@ QtObject {
 
     signal finished(string op, bool ok, string message, string extra)
     signal folderCreated(string path, string name)
+    signal fileCreated(string path, string name)
 
     property bool _started: false
 
@@ -47,6 +48,11 @@ QtObject {
             const lines = outText.split("\n");
             if (lines.length >= 3 && lines[0] === "CREATED") {
                 ops.folderCreated(lines[1], lines[2]);
+            }
+        } else if (op === "mkfile" && ok) {
+            const lines = outText.split("\n");
+            if (lines.length >= 3 && lines[0] === "CREATED") {
+                ops.fileCreated(lines[1], lines[2]);
             }
         }
 
@@ -99,6 +105,28 @@ QtObject {
             'if mkdir -p -- "$d"; then printf "CREATED\\n%s\\n%s\\n" "$d" "$n"; else exit 1; fi';
         run("mkdir", ["bash", "-c", script, "--", parentDir, baseName], function () {
             return "Could not create folder in \"" + parentDir + "\"";
+        });
+    }
+
+    function createFile(parentDir, name) {
+        const full = (name && name.trim()) ? name.trim() : "New Document.txt";
+        if (full.indexOf("/") !== -1 || full === "." || full === "..") {
+            ops.finished("mkfile", false, "A name cannot contain \"/\", \".\" or \"..\"", "");
+            return;
+        }
+        const script =
+            'p="$1"; full="$2"; ' +
+            'if [[ "$full" == .* && "$full" != *.*.* ]]; then base="$full"; ext=""; ' +
+            'elif [[ "$full" == *.* ]]; then ext=".${full##*.}"; base="${full%.*}"; ' +
+            'else ext=""; base="$full"; fi; ' +
+            'n="$full"; f="$p/$n"; ' +
+            'if [ -e "$f" ]; then ' +
+            '  c=1; while [ -e "$p/${base} (${c})${ext}" ]; do c=$((c + 1)); done; ' +
+            '  n="${base} (${c})${ext}"; f="$p/$n"; ' +
+            'fi; ' +
+            'if touch -- "$f"; then printf "CREATED\\n%s\\n%s\\n" "$f" "$n"; else exit 1; fi';
+        run("mkfile", ["bash", "-c", script, "--", parentDir, full], function () {
+            return "Could not create file in \"" + parentDir + "\"";
         });
     }
 

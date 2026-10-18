@@ -197,6 +197,7 @@ Window {
     property var undoStack: []
     property var lastTrashedItem: null
     property string pendingCreatedFolderToRename: ""
+    property bool renameSelectAll: false
     property string pendingRenameOldPath: ""
     property string pendingRenameOldName: ""
     property string pendingRenameNewPath: ""
@@ -213,9 +214,19 @@ Window {
                 win.pendingCreatedFolderToRename = name;
             }
         }
+        onFileCreated: (path, name) => {
+            win.pushUndo("Create file " + name, function() {
+                fileOps.trash(path);
+            });
+            const found = win.selectByName(name, true);
+            if (!found) {
+                win.pendingCreatedFolderToRename = name;
+            }
+        }
         onFinished: (op, ok, message, extra) => {
             if (op === "rename") {
                 win.renaming = false;
+                win.renameSelectAll = false;
                 if (ok) {
                     win.notify("Renamed");
                     if (win.pendingRenameOldPath && win.pendingRenameNewPath) {
@@ -234,6 +245,9 @@ Window {
                 }
             } else if (op === "mkdir") {
                 if (ok) win.notify("Folder created");
+                else win.notify(message, true);
+            } else if (op === "mkfile") {
+                if (ok) win.notify("File created");
                 else win.notify(message, true);
             } else if (op === "trash") {
                 if (ok) {
@@ -512,6 +526,7 @@ Window {
             win.notify("Select an item first", true);
             return;
         }
+        win.renameSelectAll = false;
         win.renameValue = win.selectedItem.name;
         win.renaming = true;
     }
@@ -521,6 +536,7 @@ Window {
         var val = (newName !== undefined && newName !== null) ? newName : win.renameValue;
         val = val.trim();
         win.renaming = false;
+        win.renameSelectAll = false;
         if (win.isGrid) fileGridView.forceActiveFocus();
         else fileListView.forceActiveFocus();
         if (val === "" || val === win.selectedItem.name) return;
@@ -533,12 +549,21 @@ Window {
 
     function cancelRename() {
         win.renaming = false;
+        win.renameSelectAll = false;
         if (win.isGrid) fileGridView.forceActiveFocus();
         else fileListView.forceActiveFocus();
     }
 
     function newFolder() {
+        if (win.isTrash) return;
+        win.renameSelectAll = false;
         fileOps.createFolder(win.currentPath, "New folder");
+    }
+
+    function newFile() {
+        if (win.isTrash) return;
+        win.renameSelectAll = true;
+        fileOps.createFile(win.currentPath, "New Document.txt");
     }
 
     // Uses selectedPaths(), not win.selectedItem: after Ctrl+A the highlight
@@ -783,6 +808,7 @@ Window {
                         isTrash: win.isTrash
                         renaming: win.renaming
                         renameValue: win.renameValue
+                        selectAllOnRename: win.renameSelectAll
                         onRenameCommitted: (n) => win.commitRename(n)
                         onRenameCancelled: () => win.cancelRename()
                         onSelectAllRequested: win.selectAll()
@@ -796,6 +822,7 @@ Window {
                         onRenameRequested: win.beginRename()
                         onDeleteRequested: (perm) => { if (perm || win.isTrash) win.requestPermanentDelete(); else win.moveSelectionToTrash(); }
                         onNewFolderRequested: win.newFolder()
+                        onNewFileRequested: win.newFile()
                         onContextMenuRequested: (gx, gy, info) => win.showItemContextMenu(gx, gy, info)
                         onEmptySpaceContextMenuRequested: (gx, gy) => { win.clearSelection(); win.showEmptyContextMenu(gx, gy); }
                     }
@@ -823,6 +850,7 @@ Window {
                         isTrash: win.isTrash
                         renaming: win.renaming
                         renameValue: win.renameValue
+                        selectAllOnRename: win.renameSelectAll
                         onRenameCommitted: (n) => win.commitRename(n)
                         onRenameCancelled: () => win.cancelRename()
                         onSelectAllRequested: win.selectAll()
@@ -836,6 +864,7 @@ Window {
                         onRenameRequested: win.beginRename()
                         onDeleteRequested: (perm) => { if (perm || win.isTrash) win.requestPermanentDelete(); else win.moveSelectionToTrash(); }
                         onNewFolderRequested: win.newFolder()
+                        onNewFileRequested: win.newFile()
                         onFileActivated: (index, path, isDir) => {
                             if (win.isTrash) {
                                 win.restoreSelectionFromTrash();
@@ -891,6 +920,7 @@ Window {
     Shortcut { sequence: "Ctrl+H"; onActivated: folderModel.showHidden = !folderModel.showHidden }
     Shortcut { sequence: "Ctrl+P"; onActivated: win.showPreview = !win.showPreview }
     Shortcut { sequence: "Ctrl+N"; onActivated: win.newFolder() }
+    Shortcut { sequence: "Ctrl+Shift+N"; onActivated: win.newFile() }
     Shortcut { sequence: "Ctrl+I"; onActivated: win.isGrid = !win.isGrid }
     Shortcut { sequence: "Ctrl+X"; onActivated: win.cutSelection() }
     Shortcut { sequence: "Ctrl+C"; onActivated: win.copySelection() }
@@ -1081,6 +1111,13 @@ Window {
                 shortcut: "Ctrl+N",
                 action: function() {
                     win.newFolder();
+                }
+            },
+            {
+                label: "New file",
+                shortcut: "Ctrl+Shift+N",
+                action: function() {
+                    win.newFile();
                 }
             },
             {

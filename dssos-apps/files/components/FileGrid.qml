@@ -80,9 +80,12 @@ Item {
     signal renameRequested()
     signal deleteRequested(bool permanent)
     signal newFolderRequested()
+    signal newFileRequested()
     signal goUpRequested()
     signal goBackRequested()
     signal goForwardRequested()
+
+    property bool selectAllOnRename: false
 
     focus: true
     onRenamingChanged: if (!renaming) root.forceActiveFocus()
@@ -105,7 +108,11 @@ Item {
                 root.undoRequested();
                 event.accepted = true;
             } else if (event.key === Qt.Key_N) {
-                root.newFolderRequested();
+                if (event.modifiers & Qt.ShiftModifier) {
+                    root.newFileRequested();
+                } else {
+                    root.newFolderRequested();
+                }
                 event.accepted = true;
             }
         } else if (event.modifiers & Qt.AltModifier) {
@@ -349,13 +356,14 @@ Item {
                                 Qt.callLater(function() {
                                     gridInlineInput.forceActiveFocus();
                                     var dot = gridInlineInput.text.lastIndexOf(".");
-                                    if (!modelData.fileIsDir && dot > 0) {
+                                    if (!root.selectAllOnRename && !modelData.fileIsDir && dot > 0) {
                                         gridInlineInput.select(0, dot);
                                     } else {
                                         gridInlineInput.selectAll();
                                     }
                                 });
                             }
+                            onAccepted: { root.renameCommitted(text); }
                             Keys.onReturnPressed: (event) => { root.renameCommitted(text); event.accepted = true; }
                             Keys.onEnterPressed: (event) => { root.renameCommitted(text); event.accepted = true; }
                             Keys.onEscapePressed: (event) => { root.renameCancelled(); event.accepted = true; }
