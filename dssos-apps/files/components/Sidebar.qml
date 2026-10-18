@@ -153,13 +153,16 @@ Rectangle {
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
                                 acceptedButtons: Qt.LeftButton | Qt.RightButton
+                                onPressed: (mouse) => {
+                                    if (mouse.button === Qt.RightButton) {
+                                        var pt = mapToItem(null, mouse.x, mouse.y);
+                                        root.contextMenuRequested(pt.x, pt.y, modelData);
+                                    }
+                                }
                                 onClicked: (mouse) => {
                                     if (mouse.button === Qt.LeftButton) {
                                         if (modelData.path) Paths.ensureDirectory(modelData.path);
                                         root.locationSelected(modelData.path);
-                                    } else if (mouse.button === Qt.RightButton) {
-                                        var pt = mapToItem(null, mouse.x, mouse.y);
-                                        root.contextMenuRequested(pt.x, pt.y, modelData);
                                     }
                                 }
                             }

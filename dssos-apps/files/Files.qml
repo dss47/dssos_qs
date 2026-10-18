@@ -906,6 +906,7 @@ Window {
                             }
                         }
                     }
+                }
 
             // Volet d'aperçu droit (230px)
             Preview {
@@ -969,6 +970,11 @@ Window {
             if (win.isTrash) win.requestPermanentDelete();
             else win.moveSelectionToTrash();
         }
+    }
+
+    Shortcut {
+        sequence: "Shift+Delete"
+        onActivated: win.requestPermanentDelete()
     }
 
     Shortcut {
