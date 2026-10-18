@@ -18,6 +18,7 @@ Item {
         source: root.name !== "" ? DssIcons.get(root.name, root.color, root.strokeWidth) : ""
         fillMode: Image.PreserveAspectFit
         smooth: true
-        asynchronous: false
+        asynchronous: true
+        cache: true
     }
 }

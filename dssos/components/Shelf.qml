@@ -29,7 +29,8 @@ PanelWindow {
     visible: true
     mask: shelfWin.shelfOpen ? openMask : closedMask
 
-    Region { id: openMask; item: shelfContent }
+    // Fixed regions: prevents per-frame compositor input region updates during animation
+    Region { id: openMask; width: shelfWin.width; height: shelfWin.height }
     Region { id: closedMask; width: 0; height: 0 }
 
     OutsideClick {
@@ -82,14 +83,12 @@ PanelWindow {
             border.width: 1
             border.color: "#1c1c1c"
 
-            layer.enabled: true
-            layer.smooth: true
-
+            // Direct hardware translation without FBO overhead
             transform: Translate {
                 y: shelfWin.shelfOpen ? 0 : shelfWin.shelfHeight
                 Behavior on y {
                     NumberAnimation {
-                        duration: 160
+                        duration: 130
                         easing.type: Easing.OutQuad
                     }
                 }

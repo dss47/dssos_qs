@@ -27,11 +27,18 @@ QtObject {
         sn: '<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>'
     })
 
+    readonly property var _cache: ({})
+
     function get(name, strokeColor, strokeWidth) {
-        var p = paths[name] || "";
         var c = strokeColor ? strokeColor.toString() : "#8c8c8c";
         var sw = strokeWidth ? strokeWidth.toString() : "1.6";
+        var key = name + "_" + c + "_" + sw;
+        if (_cache[key]) return _cache[key];
+
+        var p = paths[name] || "";
         var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="' + c + '" stroke-width="' + sw + '" stroke-linecap="round" stroke-linejoin="round">' + p + '</svg>';
-        return "data:image/svg+xml;utf8," + encodeURIComponent(svg);
+        var uri = "data:image/svg+xml;utf8," + encodeURIComponent(svg);
+        _cache[key] = uri;
+        return uri;
     }
 }
