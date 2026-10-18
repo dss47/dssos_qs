@@ -19,6 +19,7 @@ PanelWindow {
     visible: true
     mask: hidden.shown ? openMask : closedMask
     exclusionMode: ExclusionMode.Ignore
+    WlrLayershell.keyboardFocus: hidden.shown ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     property bool shown: false
     // true while sliding out: card visible but dead (no mask, no clicks)

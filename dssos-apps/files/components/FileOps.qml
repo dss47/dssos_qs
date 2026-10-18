@@ -31,18 +31,35 @@ QtObject {
             ops.finished(op, ok, ok ? "" : (errText || ops._errorFrom(code)), outText);
             ops._pendingOp = "";
             ops._errorFrom = function (c) { return "Operation failed"; };
+            ops._queue.shift();
+            if (ops._queue.length > 0) {
+                Qt.callLater(ops._pump);
+            }
         }
     }
 
     property string _pendingOp: ""
     property var _errorFrom: function (c) { return "Operation failed"; }
+    property var _queue: []
 
     function run(op, command, describeFailure) {
-        _pendingOp = op;
-        _errorFrom = describeFailure || function (c) { return "Operation failed"; };
-        _proc.command = command;
+        _queue.push({
+            op: op,
+            command: command,
+            describeFailure: describeFailure || function (c) { return "Operation failed"; }
+        });
+        if (!_proc.running && _queue.length === 1) {
+            _pump();
+        }
+    }
+
+    function _pump() {
+        if (_queue.length === 0) return;
+        const next = _queue[0];
+        _pendingOp = next.op;
+        _errorFrom = next.describeFailure;
+        _proc.command = next.command;
         _proc.running = true;
-        Qt.callLater(function () { _proc.running = true; });
     }
 
 // Every bash loop in this file ends with `done`, and `done` takes the exit

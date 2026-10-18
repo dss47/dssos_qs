@@ -260,8 +260,7 @@ Window {
                         // user just did, and a stack entry per file would make
                         // Ctrl+Z look like it needed pressing N times.
                         win.pushUndo("Paste " + created.length, function() {
-                            for (let i = 0; i < created.length; ++i)
-                                fileOps.trash(created[i]);
+                            fileOps.trash(created);
                         });
                     } else {
                         win.notify("Nothing pasted");

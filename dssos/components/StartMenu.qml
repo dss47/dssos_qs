@@ -15,6 +15,7 @@ PanelWindow {
     visible: true
     mask: menu.shown ? openMask : closedMask
     exclusionMode: ExclusionMode.Ignore
+    WlrLayershell.keyboardFocus: menu.shown ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     // ---- same palette ----
     readonly property color borderCol: Style.border

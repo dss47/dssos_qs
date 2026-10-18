@@ -25,6 +25,7 @@ PanelWindow {
     visible: true
     mask: (shown || closing) ? openMask : closedMask
     exclusionMode: ExclusionMode.Ignore
+    WlrLayershell.keyboardFocus: (ctx.shown || ctx.closing) ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     property bool shown: false
     property bool closing: false

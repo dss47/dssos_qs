@@ -21,6 +21,7 @@ PanelWindow {
     visible: true
     mask: quick.shown ? openMask : closedMask
     exclusionMode: ExclusionMode.Ignore
+    WlrLayershell.keyboardFocus: quick.shown ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     // ---- same palette as the bar ----
     readonly property color borderCol: Style.border
