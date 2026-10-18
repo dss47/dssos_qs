@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Wayland
-import Quickshell.Hyprland
 
 // Hidden-icons overflow box, opens above the chevron.
 PanelWindow {
@@ -25,10 +24,9 @@ PanelWindow {
     // true while sliding out: card visible but dead (no mask, no clicks)
     property bool closing: false
 
-    HyprlandFocusGrab {
-        windows: [hidden]
-        active: hidden.shown && BarState.hiddenOpen
-        onCleared: BarState.hiddenOpen = false
+    OutsideClick {
+        visible: hidden.shown && BarState.hiddenOpen
+        onClicked: BarState.hiddenOpen = false
     }
 
     Region { id: openMask; item: card }
@@ -83,7 +81,7 @@ PanelWindow {
 
         Rectangle {
             anchors.fill: parent
-            radius: 14
+            radius: 7
             color: Style.surface
             border.width: 1
             border.color: Style.border
@@ -101,7 +99,7 @@ PanelWindow {
                     Layout.preferredHeight: 36
                     Rectangle {
                         anchors.centerIn: parent
-                        width: 32; height: 32; radius: 8
+                        width: 32; height: 32; radius: 5
                         color: Style.text
                         opacity: hMouse.pressed ? Style.press : (hMouse.containsMouse ? Style.hover : 0)
                         Behavior on opacity { NumberAnimation { duration: 100 } }

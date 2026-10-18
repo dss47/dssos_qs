@@ -14,7 +14,7 @@ QtObject {
     property bool open: false
     property string title: ""
     property real ax: 0
-    property int marginBottom: 56
+    property int marginBottom: Style.flyoutBottom
 
     // rowsModel carries plain data roles only; actions stay in a JS array
     // and are dispatched by index from fire(), never bound to the view.

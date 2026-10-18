@@ -18,13 +18,14 @@ QtObject {
     readonly property color logoTop: "#5ff09a"
     readonly property color logoBottom: "#25a75c"
 
-    // taskbar geometry
-    readonly property int barHeight: 48
-    readonly property color barEdge: "#CC141414"
-    readonly property color barMid: "#CC000000"
+    // taskbar geometry (dock: 70% height, single docked bar)
+    readonly property int barHeight: 34
+    readonly property color barEdge: "#FF141414"
+    readonly property color barMid: "#FF000000"
 
-    // flyouts sit one gap above the bar
-    readonly property int flyoutBottom: 56
+    // flyouts sit one gap above the bar (tracks barHeight on any screen)
+    readonly property int flyoutGap: 8
+    readonly property int flyoutBottom: barHeight + flyoutGap
 
     // motion: flyouts glide, menus fade fast (untouched, 120/100)
     readonly property int slideIn: 200

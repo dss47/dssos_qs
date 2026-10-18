@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.Hyprland
 
 // Start menu flyout, styled to match the bar and quick settings.
 PanelWindow {
@@ -42,10 +41,9 @@ PanelWindow {
             (e.comment ?? "").toLowerCase().includes(q));
     }
 
-    HyprlandFocusGrab {
-        windows: [menu]
-        active: menu.shown
-        onCleared: BarState.startOpen = false
+    OutsideClick {
+        visible: menu.shown
+        onClicked: BarState.startOpen = false
     }
 
     Region { id: openMask; item: card }
@@ -92,11 +90,13 @@ PanelWindow {
         }
     }
 
+    // Apps open where the compositor puts them (labwc: stacking).
+    // No auto-spread, no moves, no slots.
     function launch(entry) {
         if (entry.runInTerminal) {
             // execute() won't open a terminal for Terminal=true apps;
             // entry.command may still carry %U-style field codes, drop them
-            const argv = ["kitty", "-e"];
+            const argv = ["foot", "-e"];
             for (const a of entry.command) {
                 if (/^%[a-zA-Z]$/.test(a)) { continue; }
                 argv.push(a);
@@ -122,7 +122,7 @@ PanelWindow {
         property color hoverColor: Style.cardHi
         Layout.preferredWidth: 40
         Layout.preferredHeight: 40
-        radius: 12
+        radius: 6
         color: pb.armed ? Style.dangerDeep : (pArea.containsMouse ? pb.hoverColor : menu.cardColor)
         Behavior on color { ColorAnimation { duration: 120 } }
 
@@ -169,7 +169,7 @@ PanelWindow {
 
         Rectangle {
             anchors.fill: parent
-            radius: 14
+            radius: 7
             color: menu.surface
             border.width: 1
             border.color: menu.borderCol
@@ -183,7 +183,7 @@ PanelWindow {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 44
-                radius: 22
+                radius: 12
                 color: menu.cardColor
 
                 RowLayout {
@@ -192,7 +192,7 @@ PanelWindow {
                     Image {
                         width: 13; height: 13
                         sourceSize.width: 26; sourceSize.height: 26
-                        source: "../assets/icons/search.svg"
+                        source: "../assets/icons/fluent/search-visual.svg"
                     }
                     TextInput {
                         id: search
@@ -264,7 +264,7 @@ PanelWindow {
 
                     Rectangle {
                         anchors { fill: parent; margins: 3 }
-                        radius: 12
+                        radius: 6
                         color: (cell.GridView.isCurrentItem || cArea.containsMouse) ? menu.cardColor : "transparent"
                         Behavior on color { ColorAnimation { duration: 100 } }
 
@@ -343,7 +343,8 @@ PanelWindow {
                     font.pixelSize: 13
                     font.bold: true
                 }
-                PowerButton { icon: "lock"; cmd: ["loginctl", "lock-session"] }
+                PowerButton { icon: "lock"; cmd: ["swaylock"] }
+                PowerButton { icon: "logout"; cmd: ["sh", "-c", "loginctl terminate-session \"$XDG_SESSION_ID\""]; confirm: true }
                 PowerButton { icon: "rotate-cw"; cmd: ["systemctl", "reboot"]; confirm: true }
                 PowerButton { icon: "power"; cmd: ["systemctl", "poweroff"]; confirm: true; hoverColor: Style.dangerDeep }
             }

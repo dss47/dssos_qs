@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.Hyprland
 
 // The ONE context menu window for the whole OS. Single instance in shell.qml.
 // Opens upward from (ax, marginBottom). View binds to primitive lists only.
@@ -25,10 +24,9 @@ PanelWindow {
     // true while fading out: card visible but dead (no mask, no clicks)
     property bool closing: false
 
-    HyprlandFocusGrab {
-        windows: [ctx]
-        active: ctx.shown && ContextMenuState.open
-        onCleared: ContextMenuState.hide()
+    OutsideClick {
+        visible: ctx.shown && ContextMenuState.open
+        onClicked: ContextMenuState.hide()
     }
 
     Region { id: openMask; item: card }
@@ -83,7 +81,7 @@ PanelWindow {
 
         Rectangle {
             anchors.fill: parent
-            radius: 14
+            radius: 7
             color: Style.surface
             border.width: 1
             border.color: Style.border
@@ -138,7 +136,7 @@ PanelWindow {
                         Rectangle {
                             visible: kind !== "sep"
                             anchors.fill: parent
-                            radius: 8
+                            radius: 5
                             color: Qt.rgba(1, 1, 1, !ison ? 0 : (rowMouse.pressed ? Style.press : (rowMouse.containsMouse ? Style.hover : 0)))
                             Behavior on color { ColorAnimation { duration: 80 } }
 
@@ -165,7 +163,7 @@ PanelWindow {
                                     visible: hint !== ""
                                     Layout.preferredWidth: hintText.implicitWidth + 12
                                     Layout.preferredHeight: 20
-                                    radius: 6
+                                    radius: 4
                                     color: "transparent"
                                     border.width: 1
                                     border.color: Style.text

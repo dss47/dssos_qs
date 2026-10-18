@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
-import Quickshell.Hyprland
 import Quickshell.Services.Pipewire
 import Quickshell.Networking
 
@@ -61,10 +60,9 @@ PanelWindow {
 
     PwObjectTracker { objects: [quick.sink] }
 
-    HyprlandFocusGrab {
-        windows: [quick]
-        active: quick.shown && BarState.quickOpen
-        onCleared: BarState.quickOpen = false
+    OutsideClick {
+        visible: quick.shown && BarState.quickOpen
+        onClicked: BarState.quickOpen = false
     }
 
     Region { id: openMask; item: card }
@@ -145,7 +143,7 @@ PanelWindow {
 
         Layout.fillWidth: true
         Layout.preferredHeight: 64
-        radius: 12
+        radius: 6
         color: tile.active ? Style.green : Style.card
 
         // hover + press effect
@@ -231,14 +229,14 @@ PanelWindow {
         property string body
         Layout.fillWidth: true
         Layout.preferredHeight: 54
-        radius: 10
+        radius: 6
         color: Style.card
         RowLayout {
             anchors { fill: parent; margins: 10 }
             spacing: 10
             Rectangle {
                 Layout.preferredWidth: 30; Layout.preferredHeight: 30
-                radius: 8; color: Style.cardHi
+                radius: 5; color: Style.cardHi
                 Image { anchors.centerIn: parent; width: 14; height: 14; sourceSize.width: 28; sourceSize.height: 28; source: "../assets/icons/" + icon + ".svg" }
             }
             ColumnLayout {
@@ -268,7 +266,7 @@ PanelWindow {
     // ================= surface (flat, no gradient) =================
     Rectangle {
         anchors.fill: parent
-        radius: 14
+        radius: 7
         border.width: 1
         border.color: quick.borderCol
         color: quick.surface
@@ -351,7 +349,7 @@ PanelWindow {
                 Item {
                     Layout.preferredWidth: 32; Layout.preferredHeight: 32
                     Rectangle {
-                        anchors.centerIn: parent; width: 30; height: 30; radius: 8
+                        anchors.centerIn: parent; width: 30; height: 30; radius: 5
                         color: Style.text; opacity: wifiBack.pressed ? Style.press : (wifiBack.containsMouse ? Style.hover : 0)
                         Behavior on opacity { NumberAnimation { duration: 100 } }
                     }
@@ -359,7 +357,7 @@ PanelWindow {
                         anchors.centerIn: parent
                         width: 18; height: 18
                         sourceSize.width: 36; sourceSize.height: 36
-                        source: "../assets/icons/chevron-left.svg"
+                        source: "../assets/icons/fluent/chevron-left.svg"
                     }
                     MouseArea {
                         id: wifiBack
@@ -403,10 +401,10 @@ PanelWindow {
                         ]
                         delegate: Rectangle {
                             required property var modelData
-                            width: wifiList.width; height: 44; radius: 10
+                            width: wifiList.width; height: 44; radius: 6
                             color: Style.card
                             Rectangle {
-                                anchors.fill: parent; radius: 10; color: Style.text
+                                anchors.fill: parent; radius: 6; color: Style.text
                                 opacity: wifiRow.pressed ? Style.press : (wifiRow.containsMouse ? Style.hover : 0)
                                 Behavior on opacity { NumberAnimation { duration: 100 } }
                             }
@@ -415,7 +413,7 @@ PanelWindow {
                                 spacing: 8
                                 Text { text: parent.parent.modelData.name; color: Style.text; font.pixelSize: 13; Layout.fillWidth: true }
                                 Text { text: parent.parent.modelData.sig; color: Style.dim; font.pixelSize: 12 }
-                                Image { visible: parent.parent.modelData.lock; width: 10; height: 10; sourceSize.width: 20; sourceSize.height: 20; source: "../assets/icons/lock.svg" }
+                                Image { visible: parent.parent.modelData.lock; width: 10; height: 10; sourceSize.width: 20; sourceSize.height: 20; source: "../assets/icons/fluent/lock-closed.svg" }
                                 Text { text: parent.parent.modelData.cur ? "●" : ""; color: Style.green; font.pixelSize: 12 }
                             }
                             MouseArea {
@@ -442,7 +440,7 @@ PanelWindow {
                 Item {
                     Layout.preferredWidth: 32; Layout.preferredHeight: 32
                     Rectangle {
-                        anchors.centerIn: parent; width: 30; height: 30; radius: 8
+                        anchors.centerIn: parent; width: 30; height: 30; radius: 5
                         color: Style.text; opacity: btBack.pressed ? Style.press : (btBack.containsMouse ? Style.hover : 0)
                         Behavior on opacity { NumberAnimation { duration: 100 } }
                     }
@@ -450,7 +448,7 @@ PanelWindow {
                         anchors.centerIn: parent
                         width: 18; height: 18
                         sourceSize.width: 36; sourceSize.height: 36
-                        source: "../assets/icons/chevron-left.svg"
+                        source: "../assets/icons/fluent/chevron-left.svg"
                     }
                     MouseArea {
                         id: btBack
@@ -496,17 +494,17 @@ PanelWindow {
                         ]
                         delegate: Rectangle {
                             required property var modelData
-                            width: btList.width; height: 44; radius: 10
+                            width: btList.width; height: 44; radius: 6
                             color: Style.card
                             Rectangle {
-                                anchors.fill: parent; radius: 10; color: Style.text
+                                anchors.fill: parent; radius: 6; color: Style.text
                                 opacity: btRow.pressed ? Style.press : (btRow.containsMouse ? Style.hover : 0)
                                 Behavior on opacity { NumberAnimation { duration: 100 } }
                             }
                             RowLayout {
                                 anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
                                 spacing: 8
-                                Image { width: 14; height: 14; sourceSize.width: 28; sourceSize.height: 28; source: "../assets/icons/bluetooth.svg"; opacity: 0.7 }
+                                Image { width: 14; height: 14; sourceSize.width: 28; sourceSize.height: 28; source: "../assets/icons/fluent/bluetooth.svg"; opacity: 0.7 }
                                 Text { text: parent.parent.modelData.name; color: Style.text; font.pixelSize: 13; Layout.fillWidth: true }
                                 Text { text: parent.parent.modelData.cur ? "●" : ""; color: Style.green; font.pixelSize: 12 }
                             }
