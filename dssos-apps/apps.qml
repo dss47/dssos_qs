@@ -23,6 +23,30 @@ ShellRoot {
     // Multi-instance tracker for Files
     property var filesInstances: []
 
+    Timer {
+        id: idleExitTimer
+        interval: 1500
+        repeat: false
+        onTriggered: {
+            if (root.filesInstances.length === 0 && root.openSingletons.length === 0) {
+                console.log("dssos-apps: all windows closed, exiting host process to free memory");
+                Qt.quit();
+            }
+        }
+    }
+
+    function checkIdleExit(): void {
+        if (filesInstances.length === 0 && openSingletons.length === 0) {
+            idleExitTimer.restart();
+        } else {
+            idleExitTimer.stop();
+        }
+    }
+
+    Component.onCompleted: {
+        root.checkIdleExit();
+    }
+
     function dismissAllContextMenus(): void {
         for (var i = 0; i < filesInstances.length; i++) {
             if (filesInstances[i] && filesInstances[i].dismissContextMenu) {
@@ -47,6 +71,7 @@ ShellRoot {
     }
 
     function openFilesWindow(targetPath: string): void {
+        idleExitTimer.stop();
         console.log("--> openFilesWindow called with:", targetPath, "current count:", filesInstances.length);
         var homeDir = Quickshell.env("HOME") || "/";
         var path = (targetPath && targetPath !== "") ? targetPath : homeDir;
@@ -64,6 +89,7 @@ ShellRoot {
 
         if (!win) {
             console.warn("Failed to instantiate Files window");
+            root.checkIdleExit();
             return;
         }
 
@@ -76,6 +102,7 @@ ShellRoot {
                 filesInstances.splice(idx, 1);
             }
             win.destroy();
+            root.checkIdleExit();
         });
 
         win.visible = true;
@@ -86,6 +113,8 @@ ShellRoot {
     function showSingleton(app: string): void {
         if (!singletonApps.includes(app))
             return;
+
+        idleExitTimer.stop();
 
         if (!openSingletons.includes(app)) {
             openSingletons = openSingletons.concat([app]);
@@ -137,6 +166,7 @@ ShellRoot {
             } else {
                 root.hideSingleton(app);
             }
+            root.checkIdleExit();
         }
     }
 
@@ -158,6 +188,7 @@ ShellRoot {
         function onClosing(close) {
             close.accepted = true;
             root.hideSingleton("settings");
+            root.checkIdleExit();
         }
     }
 
@@ -179,6 +210,7 @@ ShellRoot {
         function onClosing(close) {
             close.accepted = true;
             root.hideSingleton("tasks");
+            root.checkIdleExit();
         }
     }
 }
