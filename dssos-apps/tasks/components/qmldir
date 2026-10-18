@@ -1,0 +1,10 @@
+FilterSwitch 1.0 FilterSwitch.qml
+OverviewPage 1.0 OverviewPage.qml
+ProcessList 1.0 ProcessList.qml
+ProcessRow 1.0 ProcessRow.qml
+ResourceTile 1.0 ResourceTile.qml
+Sidebar 1.0 Sidebar.qml
+Sparkline 1.0 Sparkline.qml
+SpecRow 1.0 SpecRow.qml
+StatusBar 1.0 StatusBar.qml
+TopBar 1.0 TopBar.qml

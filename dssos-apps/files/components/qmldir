@@ -1,0 +1,9 @@
+FileGrid 1.0 FileGrid.qml
+FileIcon 1.0 FileIcon.qml
+FileList 1.0 FileList.qml
+FileOps 1.0 FileOps.qml
+PathBar 1.0 PathBar.qml
+Preview 1.0 Preview.qml
+Sidebar 1.0 Sidebar.qml
+StatusBar 1.0 StatusBar.qml
+Toolbar 1.0 Toolbar.qml

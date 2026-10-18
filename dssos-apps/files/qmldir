@@ -1,0 +1,4 @@
+module files
+singleton Theme 1.0 Theme.qml
+singleton Paths 1.0 Paths.qml
+Files 1.0 Files.qml

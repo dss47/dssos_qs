@@ -1,0 +1,19 @@
+module common
+singleton Theme 1.0 Theme.qml
+DssScrollBar 1.0 DssScrollBar.qml
+DssButton 1.0 DssButton.qml
+DssIconButton 1.0 DssIconButton.qml
+DssSearchBox 1.0 DssSearchBox.qml
+DssSegmented 1.0 DssSegmented.qml
+DssCard 1.0 DssCard.qml
+DssRow 1.0 DssRow.qml
+DssMetricBar 1.0 DssMetricBar.qml
+DssStatusBar 1.0 DssStatusBar.qml
+DssDivider 1.0 DssDivider.qml
+DssToggle 1.0 DssToggle.qml
+DssSlider 1.0 DssSlider.qml
+DssDropdown 1.0 DssDropdown.qml
+DssRadio 1.0 DssRadio.qml
+DssRailButton 1.0 DssRailButton.qml
+DssSidebarItem 1.0 DssSidebarItem.qml
+DssContextMenu 1.0 DssContextMenu.qml
