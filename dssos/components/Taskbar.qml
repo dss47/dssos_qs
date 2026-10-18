@@ -43,10 +43,10 @@ PanelWindow {
     property var pinnedIds: ["dssos-files", "foot", "dssos-tasks", "dssos-settings"]
     readonly property var taskApps: {
         const live = ToplevelManager.toplevels.values;
+        const _entries = DesktopEntries.applications.values.length;
         const map = new Map();
         for (const id of bar.pinnedIds) {
             const pinnedEntry = DesktopEntries.heuristicLookup(id);
-            if (!pinnedEntry) continue;
             const k = id.toLowerCase();
             if (!map.has(k)) map.set(k, { appId: id, entry: pinnedEntry, toplevels: [] });
         }
@@ -146,7 +146,7 @@ PanelWindow {
             Item {
                 id: appsContainer
                 Layout.leftMargin: 4
-                Layout.preferredWidth: appsRow.implicitWidth
+                Layout.preferredWidth: appsRow.width
                 Layout.preferredHeight: 40
 
                 // Ink active indicator
@@ -169,7 +169,8 @@ PanelWindow {
 
                 Row {
                     id: appsRow
-                    anchors.fill: parent
+                    height: 40
+                    spacing: 0
 
                     Repeater {
                         model: ScriptModel { values: bar.taskApps; objectProp: "appId" }
@@ -232,7 +233,7 @@ PanelWindow {
                                         const focusedRef = focused;
                                         const appName = (entryRef && entryRef.name) ? entryRef.name : appId;
                                         ContextMenuState.showAt(p.x, bar.y, [
-                                            { label: "Open new window", enabled: !!entryRef, action: function() { entryRef.execute(); } },
+                                            { label: "Open new window", enabled: !!entryRef, action: function() { if (entryRef) entryRef.execute(); } },
                                             { label: "Focus", enabled: winsRef.length > 0, action: function() {
                                                 let cur = -1;
                                                 for (let ci = 0; ci < winsRef.length; ci++) {
@@ -249,7 +250,14 @@ PanelWindow {
                                         return;
                                     }
                                     if (wins.length === 0) {
-                                        if (entry) entry.execute();
+                                        if (entry) {
+                                            entry.execute();
+                                        } else {
+                                            if (appId === "dssos-files") Quickshell.execDetached(["dssos-app", "files"]);
+                                            else if (appId === "foot") Quickshell.execDetached(["foot"]);
+                                            else if (appId === "dssos-tasks") Quickshell.execDetached(["dssos-app", "tasks"]);
+                                            else if (appId === "dssos-settings") Quickshell.execDetached(["dssos-app", "settings"]);
+                                        }
                                         return;
                                     }
                                     const focused = wins.find(w => w.activated);
@@ -284,25 +292,33 @@ PanelWindow {
                     anchors.centerIn: parent
                     spacing: 14
 
-                    Image {
-                        width: 15; height: 15
-                        sourceSize: Qt.size(30, 30)
-                        source: "../assets/icons/wifi.svg"
-                        opacity: bar.wifiUp ? 1.0 : 0.45
+                    DssIcon {
+                        Layout.preferredWidth: 16
+                        Layout.preferredHeight: 16
+                        Layout.alignment: Qt.AlignVCenter
+                        name: "wf"
+                        color: stBox.stColor
+                        opacity: bar.wifiUp ? 1.0 : 0.6
+                        iconSize: 16
                     }
 
-                    Image {
-                        width: 15; height: 15
-                        sourceSize: Qt.size(30, 30)
-                        source: "../assets/icons/" + (bar.audioMuted ? "volume-x.svg" : "volume-2.svg")
-                        opacity: !bar.audioMuted ? 1.0 : 0.45
+                    DssIcon {
+                        Layout.preferredWidth: 16
+                        Layout.preferredHeight: 16
+                        Layout.alignment: Qt.AlignVCenter
+                        name: "vl"
+                        color: stBox.stColor
+                        opacity: !bar.audioMuted ? 1.0 : 0.6
+                        iconSize: 16
                     }
 
-                    Image {
-                        width: 15; height: 15
-                        sourceSize: Qt.size(30, 30)
-                        source: "../assets/icons/battery-medium.svg"
-                        opacity: 0.85
+                    DssIcon {
+                        Layout.preferredWidth: 16
+                        Layout.preferredHeight: 16
+                        Layout.alignment: Qt.AlignVCenter
+                        name: "bt"
+                        color: stBox.stColor
+                        iconSize: 16
                     }
                 }
 

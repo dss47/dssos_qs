@@ -89,12 +89,10 @@ Item {
                         anchors.rightMargin: 12
                         spacing: 10
 
-                        Image {
-                            width: 16
-                            height: 16
-                            sourceSize: Qt.size(32, 32)
-                            source: "../assets/icons/search.svg"
-                            opacity: 0.6
+                        DssIcon {
+                            name: "sr"
+                            color: root.cMuted
+                            iconSize: 16
                         }
 
                         TextInput {
@@ -223,12 +221,12 @@ Item {
 
                             ColumnLayout {
                                 anchors.centerIn: parent
-                                spacing: 8
+                                spacing: 6
 
                                 Item {
                                     Layout.alignment: Qt.AlignHCenter
-                                    Layout.preferredWidth: 32
-                                    Layout.preferredHeight: 32
+                                    Layout.preferredWidth: 28
+                                    Layout.preferredHeight: 28
 
                                     IconImage {
                                         id: appIconImg
@@ -242,7 +240,7 @@ Item {
                                         anchors.centerIn: parent
                                         name: modelData.fallback ?? "app"
                                         color: modelData.color ?? root.cGreen
-                                        iconSize: 26
+                                        iconSize: 24
                                         visible: appIconImg.status !== Image.Ready
                                     }
                                 }
@@ -360,11 +358,13 @@ Item {
                             anchors.leftMargin: 8
                             spacing: 12
 
-                            Image {
-                                width: 16; height: 16
-                                sourceSize: Qt.size(32, 32)
-                                source: "../assets/icons/moon.svg"
-                                opacity: 0.7
+                            DssIcon {
+                                Layout.preferredWidth: 16
+                                Layout.preferredHeight: 16
+                                Layout.alignment: Qt.AlignVCenter
+                                name: "sl"
+                                color: root.cMuted
+                                iconSize: 16
                             }
 
                             Text {
@@ -394,11 +394,13 @@ Item {
                             anchors.leftMargin: 8
                             spacing: 12
 
-                            Image {
-                                width: 16; height: 16
-                                sourceSize: Qt.size(32, 32)
-                                source: "../assets/icons/rotate-cw.svg"
-                                opacity: 0.7
+                            DssIcon {
+                                Layout.preferredWidth: 16
+                                Layout.preferredHeight: 16
+                                Layout.alignment: Qt.AlignVCenter
+                                name: "rs"
+                                color: root.cMuted
+                                iconSize: 16
                             }
 
                             Text {
@@ -428,11 +430,13 @@ Item {
                             anchors.leftMargin: 8
                             spacing: 12
 
-                            Image {
-                                width: 16; height: 16
-                                sourceSize: Qt.size(32, 32)
-                                source: "../assets/icons/power.svg"
-                                opacity: 0.7
+                            DssIcon {
+                                Layout.preferredWidth: 16
+                                Layout.preferredHeight: 16
+                                Layout.alignment: Qt.AlignVCenter
+                                name: "pw"
+                                color: root.cMuted
+                                iconSize: 16
                             }
 
                             Text {

@@ -108,12 +108,11 @@ Item {
                             Layout.preferredHeight: 24
                             Layout.alignment: Qt.AlignVCenter
 
-                            Image {
+                            DssIcon {
                                 anchors.centerIn: parent
-                                width: 18; height: 18
-                                sourceSize: Qt.size(36, 36)
-                                source: "../assets/icons/wifi.svg"
-                                opacity: 0.7
+                                name: "wf"
+                                color: root.cMuted
+                                iconSize: 16
                             }
                         }
 
@@ -178,12 +177,11 @@ Item {
                             Layout.preferredHeight: 24
                             Layout.alignment: Qt.AlignVCenter
 
-                            Image {
+                            DssIcon {
                                 anchors.centerIn: parent
-                                width: 18; height: 18
-                                sourceSize: Qt.size(36, 36)
-                                source: "../assets/icons/bluetooth.svg"
-                                opacity: 0.7
+                                name: "bl"
+                                color: root.cMuted
+                                iconSize: 16
                             }
                         }
 
@@ -248,12 +246,11 @@ Item {
                             Layout.preferredHeight: 24
                             Layout.alignment: Qt.AlignVCenter
 
-                            Image {
+                            DssIcon {
                                 anchors.centerIn: parent
-                                width: 18; height: 18
-                                sourceSize: Qt.size(36, 36)
-                                source: "../assets/icons/moon.svg"
-                                opacity: 0.7
+                                name: "mn"
+                                color: root.cMuted
+                                iconSize: 16
                             }
                         }
 
@@ -333,12 +330,11 @@ Item {
                             Layout.preferredHeight: 24
                             Layout.alignment: Qt.AlignVCenter
 
-                            Image {
+                            DssIcon {
                                 anchors.centerIn: parent
-                                width: 18; height: 18
-                                sourceSize: Qt.size(36, 36)
-                                source: "../assets/icons/sun-medium.svg"
-                                opacity: 0.7
+                                name: "sn"
+                                color: root.cMuted
+                                iconSize: 16
                             }
                         }
 
@@ -411,12 +407,11 @@ Item {
                             Layout.preferredHeight: 24
                             Layout.alignment: Qt.AlignVCenter
 
-                            Image {
+                            DssIcon {
                                 anchors.centerIn: parent
-                                width: 18; height: 18
-                                sourceSize: Qt.size(36, 36)
-                                source: "../assets/icons/volume-2.svg"
-                                opacity: 0.7
+                                name: "vl"
+                                color: root.cMuted
+                                iconSize: 16
                             }
                         }
 
@@ -489,12 +484,11 @@ Item {
                             Layout.preferredHeight: 24
                             Layout.alignment: Qt.AlignVCenter
 
-                            Image {
+                            DssIcon {
                                 anchors.centerIn: parent
-                                width: 18; height: 18
-                                sourceSize: Qt.size(36, 36)
-                                source: "../assets/icons/battery-medium.svg"
-                                opacity: 0.7
+                                name: "bt"
+                                color: root.cMuted
+                                iconSize: 16
                             }
                         }
 
