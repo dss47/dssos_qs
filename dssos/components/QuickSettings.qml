@@ -334,10 +334,13 @@ PanelWindow {
             }
             Tile {
                 icon: "settings"
-                active: SettingsState.open
                 onClicked: {
                     BarState.quickOpen = false;
-                    SettingsState.open = true;
+                    // Settings lives in dssos-apps, a different OS process, so
+                    // the shell cannot open it by flipping a flag: it never
+                    // mounts Comp.Settings. Launching the app is the only way,
+                    // and matches what the Desktop icons already do.
+                    Quickshell.execDetached(["dssos-app", "settings"]);
                 }
             }
         }
@@ -548,9 +551,21 @@ PanelWindow {
             visible: quick.page === "main"
             Layout.fillWidth: true
             spacing: 8
-            NotifCard { icon: "image"; title: "Upscale?  1h"; body: "Image resolution (1080x633) is lower than scr…" }
-            NotifCard { icon: "disc"; title: "GPU Screen Recorder  1h"; body: "The recording was saved to /home/saad/Vide…" }
-            NotifCard { icon: "bell"; title: "Welcome  just now"; body: "This slot is ready for the next notification…" }
+            // DssOS has no notification daemon yet, so these cards are the
+            // only thing the two Settings switches can actually govern. They
+            // now do, instead of toggling two properties that did not exist.
+            NotifCard { visible: ShellState.notificationsEnabled
+                                    && !ShellState.doNotDisturb; icon: "image"; title: "Upscale?  1h"; body: "Image resolution (1080x633) is lower than scr…" }
+            // DssOS has no notification daemon yet, so these cards are the
+            // only thing the two Settings switches can actually govern. They
+            // now do, instead of toggling two properties that did not exist.
+            NotifCard { visible: ShellState.notificationsEnabled
+                                    && !ShellState.doNotDisturb; icon: "disc"; title: "GPU Screen Recorder  1h"; body: "The recording was saved to /home/saad/Vide…" }
+            // DssOS has no notification daemon yet, so these cards are the
+            // only thing the two Settings switches can actually govern. They
+            // now do, instead of toggling two properties that did not exist.
+            NotifCard { visible: ShellState.notificationsEnabled
+                                    && !ShellState.doNotDisturb; icon: "bell"; title: "Welcome  just now"; body: "This slot is ready for the next notification…" }
         }
     }
     }

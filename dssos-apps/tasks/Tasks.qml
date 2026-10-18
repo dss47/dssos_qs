@@ -149,7 +149,9 @@ Window {
         var action = force ? "kill" : "end";
         var cmd = ["dssos-tasks-ctl", action, "" + pid];
         actionProc.command = cmd;
-        actionProc.running = true;
+        // Deferred: a Process started in the same tick as its `command`
+        // assignment runs the PREVIOUS command.
+        Qt.callLater(function () { actionProc.running = true; });
         // Schedule quick snapshot update
         quickRefreshTimer.restart();
     }
@@ -168,40 +170,21 @@ Window {
     }
 
     // Keyboard Shortcuts (Standard + French layout)
-    Item {
-        anchors.fill: parent
-        focus: true
+    //
+    // Converted from Keys.onPressed on a focus: true sibling to Shortcut.
+    // ProcessList declares focus: true and calls forceActiveFocus() on click,
+    // so the sibling lost focus for good and 1-4, Ctrl+F, Menu and Shift+F10
+    // died as soon as the user selected a process. Shortcut is resolved by the
+    // window, not by the focused item.
+    Shortcut { sequence: "1"; onActivated: { win.currentView = "ps"; win.activeSort = 0; } }
+    Shortcut { sequence: "2"; onActivated: { win.currentView = "ps"; win.activeSort = 1; } }
+    Shortcut { sequence: "3"; onActivated: { win.currentView = "ps"; win.activeSort = 2; } }
+    Shortcut { sequence: "4"; onActivated: { win.currentView = "ps"; win.activeSort = 3; } }
 
-        Keys.onPressed: function(event) {
-            if (event.key === Qt.Key_1 || event.key === Qt.Key_Ampersand) {
-                win.currentView = "ps"; win.activeSort = 0; event.accepted = true;
-            } else if (event.key === Qt.Key_2 || event.key === Qt.Key_Eacute) {
-                win.currentView = "ps"; win.activeSort = 1; event.accepted = true;
-            } else if (event.key === Qt.Key_3 || event.key === Qt.Key_QuoteDbl) {
-                win.currentView = "ps"; win.activeSort = 2; event.accepted = true;
-            } else if (event.key === Qt.Key_4 || event.key === Qt.Key_Apostrophe) {
-                win.currentView = "ps"; win.activeSort = 3; event.accepted = true;
-            } else if ((event.modifiers & Qt.ControlModifier) && event.key === Qt.Key_F) {
-                win.currentView = "ps";
-                topBar.focusSearch();
-                event.accepted = true;
-            } else if (event.key === Qt.Key_Menu || (event.key === Qt.Key_F10 && (event.modifiers & Qt.ShiftModifier))) {
-                if (win.currentView === "ps" && processList.selectedPid > 0) {
-                    var proc = null;
-                    for (var i = 0; i < win.rawProcesses.length; i++) {
-                        if (win.rawProcesses[i].pid === processList.selectedPid) {
-                            proc = win.rawProcesses[i];
-                            break;
-                        }
-                    }
-                    if (proc) {
-                        processList.contextMenuRequested(300, 180, proc);
-                    }
-                }
-                event.accepted = true;
-            }
-        }
-    }
+    Shortcut { sequence: "Ctrl+F"; onActivated: { win.currentView = "ps"; topBar.focusSearch(); } }
+
+    Shortcut { sequence: "Menu";     onActivated: win.openContextMenuShortcut() }
+    Shortcut { sequence: "Shift+F10"; onActivated: win.openContextMenuShortcut() }
 
     // Layout Root
     ColumnLayout {
@@ -287,7 +270,9 @@ Window {
                             + "Compositor:\tWayfire\n"
                             + "Shell:\t\tQuickshell\n";
                         clipboardProc.command = ["wl-copy", text];
-                        clipboardProc.running = true;
+                        // Deferred: a Process started in the same tick as its
+                        // `command` assignment runs the PREVIOUS command.
+                        Qt.callLater(function () { clipboardProc.running = true; });
                     }
                 }
 
@@ -308,7 +293,9 @@ Window {
                             var dir = path.substring(0, path.lastIndexOf("/"));
                             if (dir.length > 0) {
                                 openLocProc.command = ["xdg-open", dir];
-                                openLocProc.running = true;
+                                // Deferred: a Process started in the same tick as its
+                                // `command` assignment runs the PREVIOUS command.
+                                Qt.callLater(function () { openLocProc.running = true; });
                             }
                         }
                     }
@@ -333,7 +320,9 @@ Window {
                                 icon: "edit-copy",
                                 action: function() {
                                     clipboardProc.command = ["wl-copy", String(proc.pid)];
-                                    clipboardProc.running = true;
+                                    // Deferred: a Process started in the same tick as its
+                                    // `command` assignment runs the PREVIOUS command.
+                                    Qt.callLater(function () { clipboardProc.running = true; });
                                 }
                             },
                             {
@@ -341,7 +330,9 @@ Window {
                                 icon: "edit-copy",
                                 action: function() {
                                     clipboardProc.command = ["wl-copy", proc.name || ""];
-                                    clipboardProc.running = true;
+                                    // Deferred: a Process started in the same tick as its
+                                    // `command` assignment runs the PREVIOUS command.
+                                    Qt.callLater(function () { clipboardProc.running = true; });
                                 }
                             },
                             { separator: true },
@@ -375,6 +366,19 @@ Window {
 
     property var clipboardProc: Process { id: clipboardProc }
     property var openLocProc: Process { id: openLocProc }
+
+    // Shared by Menu and Shift+F10 so both keys do exactly the same thing.
+    function openContextMenuShortcut() {
+        if (win.currentView !== "ps" || processList.selectedPid <= 0) return;
+        var proc = null;
+        for (var i = 0; i < win.rawProcesses.length; i++) {
+            if (win.rawProcesses[i].pid === processList.selectedPid) {
+                proc = win.rawProcesses[i];
+                break;
+            }
+        }
+        if (proc) processList.contextMenuRequested(300, 180, proc);
+    }
 
     function dismissContextMenu() {
         ctxMenu.dismissImmediate();

@@ -17,7 +17,7 @@ PanelWindow {
     color: "transparent"
 
     function openMenu(x, y) {
-        Quickshell.execDetached(["qs", "ipc", "-p", "/home/saad/.config/quickshell/dssos-apps/apps.qml", "call", "context", "hide"]);
+        Quickshell.execDetached(["qs", "ipc", "-p", ShellPaths.appsHost, "call", "context", "hide"]);
         ContextMenuState.showAt(x, y, [
             {
                 label: "Terminal",

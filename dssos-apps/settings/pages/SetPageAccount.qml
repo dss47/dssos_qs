@@ -78,7 +78,9 @@ ColumnLayout {
         applyProc.command = ["pkexec", "--disable-internal-agent",
                              "/usr/local/bin/dssos-account-ctl", "apply"];
         applyProc.stdinEnabled = true;
-        applyProc.running = true;
+        // Deferred: a Process started in the same tick as its
+        // `command` assignment runs the PREVIOUS command.
+        Qt.callLater(function () { applyProc.running = true; });
         applyProc.write(JSON.stringify({ op: "set-displayname", user: root.self_,
                                          displayName: v }) + "\n");
     }
@@ -88,7 +90,9 @@ ColumnLayout {
         applyProc.command = ["pkexec", "--disable-internal-agent",
                              "/usr/local/bin/dssos-account-ctl", "apply"];
         applyProc.stdinEnabled = true;
-        applyProc.running = true;
+        // Deferred: a Process started in the same tick as its
+        // `command` assignment runs the PREVIOUS command.
+        Qt.callLater(function () { applyProc.running = true; });
         applyProc.write(JSON.stringify({ op: "set-password", user: root.self_,
                                          password: pw }) + "\n");
         pw1.text = "";

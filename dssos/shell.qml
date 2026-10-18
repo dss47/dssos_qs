@@ -7,6 +7,11 @@ import Quickshell.Io
 // Later copy this whole folder to ISO as quickshell config.
 import "components/" as Comp
 ShellRoot {
+    // Start the settings watch explicitly: ShellState is a QtObject
+    // singleton, so it cannot start itself, and without this the taskbar
+    // keeps the default accent and bar height no matter what Settings saved.
+    Component.onCompleted: Comp.ShellState.ensureStarted()
+
     Comp.Desktop {}
     Comp.Taskbar {}
     Comp.QuickSettings {}

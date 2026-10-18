@@ -29,6 +29,16 @@ QtObject {
     property string displayScale: "1.0"
     property string powerProfile: "balanced"
 
+    // Notification switches.
+    //
+    // These two did not exist at all: SetPageNotifications bound its toggles
+    // to them, so the page rendered `undefined` and every click assigned to
+    // nothing. There is still no notification daemon in DssOS, so what they
+    // actually gate is the notification cards the shell shows -- see
+    // QuickSettings.qml.
+    property bool notificationsEnabled: true
+    property bool doNotDisturb: false
+
     // Power profiles are DISCOVERED, never hardcoded.
     // "performance" only exists when a real cpufreq driver is present, so the
     // list on a VM is {balanced, power-saver} and on real hardware it gains a
@@ -171,6 +181,29 @@ QtObject {
         }
     }
 
+    // Every one of these used to be a plain property with no handler: dragging
+    // the taskbar height, the flyout gap, the key repeat rate, the pointer speed
+    // or a Wayfire effect toggle changed the value in memory and nothing else.
+    // The window was closed and the change was gone, because only setScale()
+    // and setPowerProfile() ever reached save().
+    //
+    // save() returns early while `loaded` is false, so the handlers are safe to
+    // fire during the initial load -- they cannot overwrite the stored file
+    // with the defaults that are still being read into it.
+    onAccentChanged: save()
+    onBarHeightChanged: save()
+    onFlyoutGapChanged: save()
+    onKbRepeatDelayChanged: save()
+    onKbRepeatRateChanged: save()
+    onMouseSpeedChanged: save()
+    onTouchpadTapChanged: save()
+    onTouchpadNaturalChanged: save()
+    onWfAnimateChanged: { save(); applyWayfireEffects(); }
+    onWfWobblyChanged: { save(); applyWayfireEffects(); }
+    onWfCubeChanged: { save(); applyWayfireEffects(); }
+    onNotificationsEnabledChanged: save()
+    onDoNotDisturbChanged: save()
+
     function save() {
         if (!loaded) return;
         syncStyle();
@@ -190,7 +223,9 @@ QtObject {
             wfWobbly: state.wfWobbly,
             wfCube: state.wfCube,
             displayScale: state.displayScale,
-            powerProfile: state.powerProfile
+            powerProfile: state.powerProfile,
+            notificationsEnabled: state.notificationsEnabled,
+            doNotDisturb: state.doNotDisturb
         });
         Quickshell.execDetached(["dssos-settings-ctl", "save", payload]);
     }
@@ -222,6 +257,28 @@ QtObject {
 
     function refreshBattery() {
         batteryProc.running = true;
+    }
+
+    // Pushes the three effect toggles into wayfire.ini.
+    //
+    // They were plain properties before: flipping a switch changed a boolean
+    // that nothing read, and setWayfire() had zero callers in the whole tree.
+    //
+    // Two of them are ordinary ini keys. The third, `cube`, is not -- it is a
+    // word in the [core] plugins list, which is why dssos-settings-ctl grew a
+    // wayfire-plugin verb instead of being handed a fixed string to write.
+    function applyWayfireEffects() {
+        // Wayfire's animate plugin has no on/off key: an animation is either a
+        // name or "none", on each of the three transitions.
+        const anim = state.wfAnimate ? "zoom" : "none";
+        setWayfire("animate", "open_animation", anim);
+        setWayfire("animate", "close_animation", anim);
+        setWayfire("animate", "minimize_animation", anim);
+
+        setWayfire("wobbly", "enabled_for", state.wfWobbly ? "all" : "none");
+
+        Quickshell.execDetached(["dssos-settings-ctl", "wayfire-plugin", "cube",
+                                 state.wfCube ? "1" : "0"]);
     }
 
     function setWayfire(section, key, val) {
@@ -257,6 +314,8 @@ QtObject {
                     if (d.wfCube !== undefined) state.wfCube = d.wfCube;
                     if (d.displayScale !== undefined) state.displayScale = d.displayScale;
                     if (d.powerProfile !== undefined) state.powerProfile = d.powerProfile;
+                    if (d.notificationsEnabled !== undefined) state.notificationsEnabled = d.notificationsEnabled;
+                    if (d.doNotDisturb !== undefined) state.doNotDisturb = d.doNotDisturb;
                 } catch (e) {
                     console.log("Settings JSON load fallback:", e);
                 }

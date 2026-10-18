@@ -37,7 +37,7 @@ QtObject {
     property string pictures: paths.toPath(
         Platform.StandardPaths.writableLocation(Platform.StandardPaths.PicturesLocation))
     property string videos: paths.toPath(
-        Platform.StandardPaths.writableLocation(Platform.StandardPaths.VideosLocation))
+        Platform.StandardPaths.writableLocation(Platform.StandardPaths.MoviesLocation))
 
     // XDG trash is not exposed by StandardPaths; this is the freedesktop
     // location, matching the Sidebar's Trash entry.
@@ -253,7 +253,7 @@ QtObject {
         downloads = toPath(Platform.StandardPaths.writableLocation(Platform.StandardPaths.DownloadLocation));
         music = toPath(Platform.StandardPaths.writableLocation(Platform.StandardPaths.MusicLocation));
         pictures = toPath(Platform.StandardPaths.writableLocation(Platform.StandardPaths.PicturesLocation));
-        videos = toPath(Platform.StandardPaths.writableLocation(Platform.StandardPaths.VideoLocation));
+        videos = toPath(Platform.StandardPaths.writableLocation(Platform.StandardPaths.MoviesLocation));
         trash = home + "/.local/share/Trash/files";
         ready = true;
     }

@@ -154,8 +154,22 @@ QtObject {
 
     // ---------------------------------------------------------------- trash
 
+    // Accepts one path or a list. After Ctrl+A every caller used to pass
+    // win.selectedItem -- the active row -- while the highlight covered the
+    // whole folder, so Delete threw away all but one of the selected items.
+    //
+    // One shell loop rather than one gio per path: gio has no multi-target form,
+    // and separate runs would flicker the status bar N times and hide which
+    // item refused. "$@" keeps every name intact.
     function trash(path) {
-        run("trash", ["gio", "trash", "--", path], function () {
+        const list = Array.isArray(path) ? path : [path];
+        if (list.length === 0) return;
+        const script =
+            'for p in "$@"; do ' +
+            '  if gio trash -- "$p" 2>/dev/null; then echo "TRASHED:$p"; ' +
+            '  else echo "TRASHFAILED:$p"; fi; ' +
+            'done';
+        run("trash", ["bash", "-c", script, "--"].concat(list), function () {
             return "Cannot Trash on this filesystem \u2014 press Shift+Delete to delete permanently";
         });
     }
@@ -211,11 +225,19 @@ QtObject {
         });
     }
 
+    // Accepts one path or a list. -rf for the batch: a multi-selection is
+    // collapsed to plain paths, and rm -f on a directory would fail and skip it.
     function permanentDelete(path, isDir) {
-        const cmd = isDir ? ["rm", "-rf", "--", path]
-                          : ["rm", "-f", "--", path];
-        run("permanent", cmd, function () {
-            return "Could not delete \"" + path.split("/").pop() + "\"";
+        const list = Array.isArray(path) ? path : [path];
+        if (list.length === 0) return;
+        const script =
+            'for p in "$@"; do ' +
+            '  if rm -rf -- "$p"; then echo "DELETED:$p"; else echo "DELETEFAILED:$p"; fi; ' +
+            'done';
+        run("permanent", ["bash", "-c", script, "--"].concat(list), function () {
+            return list.length === 1
+                ? "Could not delete \"" + list[0].split("/").pop() + "\""
+                : "Could not delete " + list.length + " items";
         });
     }
 }

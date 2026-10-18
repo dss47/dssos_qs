@@ -133,6 +133,9 @@ Item {
     // Formatage du type
     function formatType(fileName, isDir): string {
         if (isDir) return "Folder";
+        // fileName is undefined for a row the model has not filled in yet;
+        // lastIndexOf on it threw and took the whole Type column with it.
+        if (!fileName) return "File";
         const dot = fileName.lastIndexOf(".");
         if (dot === -1) return "File";
         const ext = fileName.substring(dot + 1).toLowerCase();

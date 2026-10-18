@@ -92,7 +92,7 @@ Item {
         menuCard.forceActiveFocus();
 
         // Dismiss desktop context menu so strictly one menu exists in the OS
-        Quickshell.execDetached(["qs", "ipc", "-p", "/home/saad/.config/quickshell/dssos/shell.qml", "call", "context", "hide"]);
+        Quickshell.execDetached(["qs", "ipc", "-p", DssPaths.shellEntry, "call", "context", "hide"]);
     }
 
     function dismiss() {

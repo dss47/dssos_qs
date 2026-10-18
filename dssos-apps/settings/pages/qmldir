@@ -1,5 +1,4 @@
 singleton SettingsTheme 1.0 SettingsTheme.qml
-singleton SettingsState 1.0 SettingsState.qml
 SetCard 1.0 SetCard.qml
 SetRow 1.0 SetRow.qml
 SetToggle 1.0 SetToggle.qml

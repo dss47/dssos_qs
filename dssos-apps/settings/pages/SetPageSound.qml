@@ -1,9 +1,25 @@
 import settings
 import QtQuick
 import QtQuick.Layouts
+import Quickshell
+
+// SettingsState never had `volume`/`micVolume`: both sliders here read and
+// assigned properties that did not exist, so they showed nothing and every drag
+// wrote into the void. PipeWire owns the volume, and QuickSettings already
+// talks to it this way -- mirroring it into JSON would add a second source of
+// truth that nothing applies.
+readonly property var sink: Pipewire.defaultAudioSink
+readonly property var source: Pipewire.defaultAudioSource
+
+// PipeWire volumes are 0..1; the sliders are 0..100.
+readonly property real volPct: sink && sink.audio ? sink.audio.volume * 100 : 0
+readonly property real micPct: source && source.audio ? source.audio.volume * 100 : 0
+
+PwObjectTracker { objects: [soundPage.sink, soundPage.source] }
 
 // System > Sound
 ColumnLayout {
+    id: soundPage
     Layout.fillWidth: true
     spacing: 0
 
@@ -41,8 +57,9 @@ ColumnLayout {
                 id: volSlider
                 from: 0
                 to: 100
-                value: SettingsState.volume
-                onMoved: (v) => SettingsState.volume = Math.round(v)
+                value: soundPage.volPct
+                onMoved: (v) => { if (soundPage.sink && soundPage.sink.audio)
+                                      soundPage.sink.audio.volume = v / 100; }
             }
             Text {
                 text: Math.round(volSlider.value) + "%"
@@ -84,8 +101,9 @@ ColumnLayout {
                 id: micSlider
                 from: 0
                 to: 100
-                value: SettingsState.micVolume
-                onMoved: (v) => SettingsState.micVolume = Math.round(v)
+                value: soundPage.micPct
+                onMoved: (v) => { if (soundPage.source && soundPage.source.audio)
+                                      soundPage.source.audio.volume = v / 100; }
             }
             Text {
                 text: Math.round(micSlider.value) + "%"

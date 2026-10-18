@@ -454,34 +454,49 @@ Window {
         fileOps.createFolder(win.currentPath, "New folder");
     }
 
+    // Uses selectedPaths(), not win.selectedItem: after Ctrl+A the highlight
+    // covers every row while selectedItem is only the active one, so Delete
+    // used to remove all but one of the selected items.
     function moveSelectionToTrash() {
-        if (!win.selectedItem) {
+        if (isTrash) {
+            win.notify("Items in Trash are removed permanently", true);
+            return;
+        }
+        const srcs = win.selectedPaths();
+        if (srcs.length === 0) {
             win.notify("Select an item first", true);
             return;
         }
         win.lastTrashedItem = {
-            name: win.selectedItem.name,
-            path: win.selectedItem.path,
-            isDir: win.selectedItem.isDir
+            name: srcs.length === 1 ? srcs[0].split("/").pop() : srcs.length + " items",
+            path: srcs[0],
+            isDir: !win.selectedItem || win.selectedItem.isDir,
+            paths: srcs.slice()
         };
-        fileOps.trash(win.selectedItem.path);
+        fileOps.trash(srcs);
     }
 
     // Shift+Delete: irreversible, so it always asks first.
     property bool confirmDelete: false
 
+    property var pendingDeletePaths: []
+
     function requestPermanentDelete() {
-        if (!win.selectedItem) {
+        const srcs = win.selectedPaths();
+        if (srcs.length === 0) {
             win.notify("Select an item first", true);
             return;
         }
+        win.pendingDeletePaths = srcs;
         win.confirmDelete = true;
     }
 
     function confirmPermanentDelete() {
         win.confirmDelete = false;
-        if (!win.selectedItem) return;
-        fileOps.permanentDelete(win.selectedItem.path, win.selectedItem.isDir);
+        const srcs = win.pendingDeletePaths || [];
+        win.pendingDeletePaths = [];
+        if (srcs.length === 0) return;
+        fileOps.permanentDelete(srcs, false);
     }
 
     function navigateTo(path: string): void {
@@ -761,84 +776,70 @@ Window {
             toastIsError: win.toastIsError
         }
     }
+    // Raccourcis clavier, en Shortcut et non en Keys.onPressed.
+    //
+    // They used to hang off a sibling Item with focus: true. FileList and
+    // FileGrid both declare focus: true and call forceActiveFocus() the moment
+    // anything is clicked, so the sibling lost focus for good and Ctrl+L,
+    // Ctrl+F, Ctrl+H, Ctrl+P, Ctrl+N, Ctrl+I, Ctrl+A, Ctrl+Z, F2, Delete and
+    // Escape all died as soon as the user touched the list.
+    //
+    // Shortcut is resolved by the window rather than by the focused item.
+    Shortcut { sequence: "Ctrl+L"; onActivated: toolbar.focusPathInput() }
+    Shortcut { sequence: "Ctrl+F"; onActivated: toolbar.focusSearch() }
+    Shortcut { sequence: "Ctrl+H"; onActivated: folderModel.showHidden = !folderModel.showHidden }
+    Shortcut { sequence: "Ctrl+P"; onActivated: win.showPreview = !win.showPreview }
+    Shortcut { sequence: "Ctrl+N"; onActivated: win.newFolder() }
+    Shortcut { sequence: "Ctrl+I"; onActivated: win.isGrid = !win.isGrid }
+    Shortcut { sequence: "Ctrl+X"; onActivated: win.cutSelection() }
+    Shortcut { sequence: "Ctrl+C"; onActivated: win.copySelection() }
+    Shortcut { sequence: "Ctrl+V"; onActivated: win.paste() }
+    Shortcut { sequence: "Ctrl+A"; onActivated: win.selectAll() }
+    Shortcut { sequence: "Ctrl+Z"; onActivated: win.undo() }
 
-    // Raccourcis clavier (Ctrl+L, Ctrl+F, Ctrl+H, Ctrl+P, Backspace, Alt+Left/Right)
-    Item {
-        focus: true
-        Keys.onPressed: event => {
-            if (event.modifiers & Qt.ControlModifier) {
-                if (event.key === Qt.Key_L) {
-                    toolbar.focusPathInput();
-                    event.accepted = true;
-                } else if (event.key === Qt.Key_F) {
-                    toolbar.focusSearch();
-                    event.accepted = true;
-                } else if (event.key === Qt.Key_H) {
-                    folderModel.showHidden = !folderModel.showHidden;
-                    event.accepted = true;
-                } else if (event.key === Qt.Key_P) {
-                    win.showPreview = !win.showPreview;
-                    event.accepted = true;
-                } else if (event.key === Qt.Key_N) {
-                    win.newFolder();
-                    event.accepted = true;
-                } else if (event.key === Qt.Key_I) {
-                    win.isGrid = !win.isGrid;
-                    event.accepted = true;
-                } else if (event.key === Qt.Key_X) {
-                    win.cutSelection();
-                    event.accepted = true;
-                } else if (event.key === Qt.Key_C) {
-                    win.copySelection();
-                    event.accepted = true;
-                } else if (event.key === Qt.Key_V) {
-                    win.paste();
-                    event.accepted = true;
-                } else if (event.key === Qt.Key_A) {
-                    win.selectAll();
-                    event.accepted = true;
-                } else if (event.key === Qt.Key_Z) {
-                    win.undo();
-                    event.accepted = true;
-                }
-            } else if (event.modifiers & Qt.AltModifier) {
-                if (event.key === Qt.Key_Left) {
-                    win.goBack();
-                    event.accepted = true;
-                } else if (event.key === Qt.Key_Right) {
-                    win.goForward();
-                    event.accepted = true;
-                }
-            } else if (event.key === Qt.Key_Backspace) {
-                win.goUp();
-                event.accepted = true;
-            } else if (event.key === Qt.Key_F2) {
-                if (!win.isTrash) win.beginRename();
-                event.accepted = true;
-            } else if (event.key === Qt.Key_Menu || (event.key === Qt.Key_F10 && (event.modifiers & Qt.ShiftModifier))) {
-                if (win.selectedItem) {
-                    win.showItemContextMenu(320, 180, win.selectedItem);
-                } else {
-                    win.showEmptyContextMenu(320, 180);
-                }
-                event.accepted = true;
-            } else if (event.key === Qt.Key_Delete) {
-                if (event.modifiers & Qt.ShiftModifier || win.isTrash) win.requestPermanentDelete();
-                else win.moveSelectionToTrash();
-                event.accepted = true;
-            } else if (event.key === Qt.Key_Escape) {
-                if (win.renaming) win.cancelRename();
-                else if (win.confirmDelete) win.confirmDelete = false;
-            } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                if (win.confirmDelete) {
-                    win.confirmPermanentDelete();
-                    event.accepted = true;
-                } else if (win.isTrash && win.selectedItem) {
-                    win.restoreSelectionFromTrash();
-                    event.accepted = true;
-                }
-            }
+    Shortcut { sequence: "Alt+Left";  onActivated: win.goBack() }
+    Shortcut { sequence: "Alt+Right"; onActivated: win.goForward() }
+    Shortcut { sequence: "Backspace"; onActivated: win.goUp() }
+    Shortcut { sequence: "F2"; onActivated: if (!win.isTrash) win.beginRename() }
+    Shortcut { sequence: "Menu";     onActivated: win.openContextMenuShortcut() }
+    Shortcut { sequence: "Shift+F10"; onActivated: win.openContextMenuShortcut() }
+
+    Shortcut {
+        sequence: "Delete"
+        onActivated: {
+            if (win.confirmDelete) { win.confirmPermanentDelete(); return; }
+            if (win.isTrash) win.requestPermanentDelete();
+            else win.moveSelectionToTrash();
         }
+    }
+
+    Shortcut {
+        sequence: "Escape"
+        onActivated: {
+            if (win.renaming) win.cancelRename();
+            else if (win.confirmDelete) win.confirmDelete = false;
+        }
+    }
+
+    Shortcut {
+        sequence: "Return"
+        onActivated: {
+            if (win.confirmDelete) win.confirmPermanentDelete();
+            else if (win.isTrash && win.selectedItem) win.restoreSelectionFromTrash();
+        }
+    }
+    Shortcut {
+        sequence: "Enter"
+        onActivated: {
+            if (win.confirmDelete) win.confirmPermanentDelete();
+            else if (win.isTrash && win.selectedItem) win.restoreSelectionFromTrash();
+        }
+    }
+
+    // Shared by Menu and Shift+F10 so both keys do exactly the same thing.
+    function openContextMenuShortcut() {
+        if (win.selectedItem) win.showItemContextMenu(320, 180, win.selectedItem);
+        else win.showEmptyContextMenu(320, 180);
     }
 
     function showItemContextMenu(gx, gy, info) {
