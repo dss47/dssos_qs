@@ -90,10 +90,35 @@ Item {
     readonly property bool wifiUp: Networking.wifiEnabled && !!activeWifi
     readonly property string wifiSsid: activeWifi?.ssid ?? (Networking.wifiEnabled ? "Connected" : "Disconnected")
 
+    // Real Battery reading
+    property bool batteryPresent: false
+    property int batteryLevel: 100
+    property string batteryStatus: "AC Power"
+
+    Process {
+        id: batRead
+        command: ["sh", "-c", "cap=$(cat /sys/class/power_supply/BAT*/capacity 2>/dev/null || cat /sys/class/power_supply/*/capacity 2>/dev/null); st=$(cat /sys/class/power_supply/BAT*/status 2>/dev/null || cat /sys/class/power_supply/*/status 2>/dev/null); if [ -n \"$cap\" ]; then echo \"$cap:$st\"; else echo \"none:AC\"; fi"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const parts = text.trim().split(":");
+                if (parts[0] !== "none" && parts[0] !== "") {
+                    root.batteryPresent = true;
+                    root.batteryLevel = parseInt(parts[0]) || 0;
+                    root.batteryStatus = parts[1] || "Discharging";
+                } else {
+                    root.batteryPresent = false;
+                    root.batteryLevel = 100;
+                    root.batteryStatus = "Plugged in";
+                }
+            }
+        }
+    }
+
     Component.onCompleted: {
         brightRead.running = true;
         btRead.running = true;
         powerRead.running = true;
+        batRead.running = true;
     }
 
     component WideTile: Rectangle {
@@ -551,14 +576,14 @@ Item {
                             Layout.alignment: Qt.AlignVCenter
 
                             Text {
-                                text: "84%"
+                                text: root.batteryPresent ? (root.batteryLevel + "%") : "AC Power"
                                 color: root.cText
                                 font.pixelSize: 13
                                 font.weight: Font.DemiBold
                             }
 
                             Text {
-                                text: "3 h 40 min left"
+                                text: root.batteryPresent ? root.batteryStatus : "Plugged in"
                                 color: root.cMuted
                                 font.pixelSize: 13
                             }

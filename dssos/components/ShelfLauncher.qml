@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Io
 import Quickshell.Widgets
 
 Item {
@@ -19,29 +20,62 @@ Item {
     readonly property color cGreen: "#34c77b"
     readonly property color cCtl: "#0a0a0a"
 
-    readonly property var pinnedApps: [
-        { id: "dssos-files", name: "Files", icon: "system-file-manager", fallback: "fd", color: "#f5b942" },
-        { id: "foot", name: "Terminal", icon: "utilities-terminal", fallback: "tm", color: "#4da3ff" },
-        { id: "browser", name: "Browser", icon: "web-browser", fallback: "gl", color: "#ff8a4c" },
-        { id: "dssos-settings", name: "Settings", icon: "preferences-system", fallback: "gr", color: "#c8ccd0" },
-        { id: "dssos-tasks", name: "Tasks", icon: "utilities-system-monitor", fallback: "ch", color: "#3ecfd0" },
-        { id: "calendar", name: "Calendar", icon: "x-office-calendar", fallback: "cl", color: "#ff5a5a" },
-        { id: "music", name: "Music", icon: "audio-player", fallback: "ms", color: "#b57bee" },
-        { id: "photos", name: "Photos", icon: "image-viewer", fallback: "im", color: "#ff5d9e" },
-        { id: "reader", name: "Reader", icon: "document-viewer", fallback: "pd", color: "#ff8a8a" },
-        { id: "code", name: "Code", icon: "text-editor", fallback: "cd", color: "#7c8cff" }
-    ]
+    readonly property string username: ShellPaths.userName
+    readonly property string userInitial: (root.username.length > 0 ? root.username[0] : "U").toUpperCase()
+    readonly property string userDisplayName: root.username.length > 0 ? (root.username[0].toUpperCase() + root.username.slice(1)) : "User"
+
+    property var recentFiles: []
+    Process {
+        id: recentProc
+        command: ["python3", ShellPaths.quickshellDir + "/dssos/scripts/get-recent-files.py"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    root.recentFiles = JSON.parse(text.trim());
+                } catch (e) {
+                    root.recentFiles = [];
+                }
+            }
+        }
+    }
+
+    Component.onCompleted: {
+        recentProc.running = true;
+    }
+
+    readonly property var installedApps: {
+        const apps = DesktopEntries.applications.values
+            .filter(e => !e.noDisplay && e.name && e.name.trim() !== "");
+        const preferred = ["files", "terminal", "foot", "browser", "tasks", "settings", "editor", "calculator"];
+        apps.sort((a, b) => {
+            const an = a.name.toLowerCase();
+            const bn = b.name.toLowerCase();
+            const ai = preferred.findIndex(p => an.includes(p));
+            const bi = preferred.findIndex(p => bn.includes(p));
+            if (ai !== -1 && bi !== -1) return ai - bi;
+            if (ai !== -1) return -1;
+            if (bi !== -1) return 1;
+            return a.name.localeCompare(b.name);
+        });
+        return apps.slice(0, 15).map(e => ({
+            entry: e,
+            name: e.name,
+            icon: e.icon,
+            fallback: "app",
+            color: root.cGreen
+        }));
+    }
 
     readonly property var searchResults: {
         const q = searchInput.text.trim().toLowerCase();
         if (q === "") return null;
         const list = DesktopEntries.applications.values
             .filter(e => !e.noDisplay && (e.name.toLowerCase().includes(q) || (e.genericName ?? "").toLowerCase().includes(q) || (e.comment ?? "").toLowerCase().includes(q)))
-            .slice(0, 10);
+            .slice(0, 15);
         return list.map(e => ({ entry: e, name: e.name, icon: e.icon, fallback: "app", color: "#34c77b" }));
     }
 
-    readonly property var displayedApps: searchResults !== null ? searchResults : pinnedApps
+    readonly property var displayedApps: searchResults !== null ? searchResults : installedApps
 
     RowLayout {
         anchors.fill: parent
@@ -102,6 +136,14 @@ Item {
                             color: root.cText
                             font.pixelSize: 13
                             clip: true
+                            onAccepted: {
+                                if (root.displayedApps && root.displayedApps.length > 0) {
+                                    const a = root.displayedApps[0];
+                                    BarState.startOpen = false;
+                                    if (a.entry) a.entry.execute();
+                                    else root.appLaunched(a.name);
+                                }
+                            }
 
                             Text {
                                 text: "Search apps and files"
@@ -129,11 +171,7 @@ Item {
                     spacing: 0
 
                     Repeater {
-                        model: [
-                            { icon: "cd", name: "Settings.qml", color: "#4da3ff", date: "Today" },
-                            { icon: "im", name: "screenshot-1.png", color: "#b57bee", date: "Today" },
-                            { icon: "pd", name: "ILISI-schedule.pdf", color: "#ff5a5a", date: "10 Oct" }
-                        ]
+                        model: root.recentFiles
 
                         delegate: Rectangle {
                             required property var modelData
@@ -173,8 +211,21 @@ Item {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    BarState.startOpen = false;
+                                    Quickshell.execDetached(["xdg-open", modelData.path]);
+                                }
                             }
                         }
+                    }
+
+                    Text {
+                        visible: root.recentFiles.length === 0
+                        text: "No recent files"
+                        color: root.cMuted
+                        font.pixelSize: 12
+                        Layout.topMargin: 8
+                        Layout.leftMargin: 8
                     }
                 }
 
@@ -308,7 +359,7 @@ Item {
 
                             Text {
                                 anchors.centerIn: parent
-                                text: "S"
+                                text: root.userInitial
                                 color: "#04130a"
                                 font.pixelSize: 13
                                 font.weight: Font.Bold
@@ -316,7 +367,7 @@ Item {
                         }
 
                         Text {
-                            text: "Saad"
+                            text: root.userDisplayName
                             color: root.cText
                             font.pixelSize: 14
                             font.weight: Font.DemiBold
