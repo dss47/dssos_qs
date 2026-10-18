@@ -14,9 +14,6 @@ ShellRoot {
 
     Comp.Desktop {}
     Comp.Taskbar {}
-    Comp.QuickSettings {}
-    Comp.StartMenu {}
-    Comp.HiddenTray {}
     Comp.ContextMenu {}
 
     // SUPER tap: qs -c $qsConfig ipc call start toggle
@@ -25,6 +22,13 @@ ShellRoot {
         function toggle(): void { Comp.BarState.startOpen = !Comp.BarState.startOpen; }
         function open(): void { Comp.BarState.startOpen = true; }
         function close(): void { Comp.BarState.startOpen = false; }
+    }
+
+    IpcHandler {
+        target: "quick"
+        function toggle(): void { Comp.BarState.quickOpen = !Comp.BarState.quickOpen; }
+        function open(): void { Comp.BarState.quickOpen = true; }
+        function close(): void { Comp.BarState.quickOpen = false; }
     }
 
     IpcHandler {

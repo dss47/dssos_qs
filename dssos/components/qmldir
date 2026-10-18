@@ -2,10 +2,14 @@ singleton BarState BarState.qml
 singleton ContextMenuState ContextMenuState.qml
 singleton Style Style.qml
 singleton ShellState ShellState.qml
+singleton ShellPaths ShellPaths.qml
+singleton DssIcons DssIcons.qml
+DssIcon DssIcon.qml
+ShelfLauncher ShelfLauncher.qml
+ShelfControl ShelfControl.qml
 Taskbar Taskbar.qml
 QuickSettings QuickSettings.qml
 StartMenu StartMenu.qml
 HiddenTray HiddenTray.qml
 ContextMenu ContextMenu.qml
 OutsideClick OutsideClick.qml
-singleton ShellPaths ShellPaths.qml

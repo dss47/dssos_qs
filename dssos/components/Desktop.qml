@@ -86,6 +86,8 @@ PanelWindow {
                 desktopWin.openMenu(mouse.x, mouse.y);
             } else {
                 ContextMenuState.hide();
+                BarState.startOpen = false;
+                BarState.quickOpen = false;
                 desktopWin.forceActiveFocus();
             }
         }
