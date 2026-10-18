@@ -5,7 +5,7 @@ import Quickshell.Io
 import Quickshell.Widgets
 import Quickshell.Wayland
 
-// Desktop background surface with icons, drag snap outlines, and context menu
+// Desktop background surface with refined icons, drag snapping wireframe, and context menu
 PanelWindow {
     id: desktopWin
 
@@ -22,10 +22,9 @@ PanelWindow {
 
     readonly property color cGreen: "#34c77b"
     readonly property color cBorder: "#1c1c1c"
-    readonly property color cSel: "#14251a"
 
     // Grid configuration
-    readonly property int cellW: 84
+    readonly property int cellW: 86
     readonly property int cellH: 96
     readonly property int gridMargin: 16
 
@@ -111,14 +110,13 @@ PanelWindow {
         y: desktopWin.gridMargin + desktopWin.targetGridY * desktopWin.cellH
         width: desktopWin.cellW
         height: desktopWin.cellH
-        color: desktopWin.cSel
+        color: Qt.rgba(0.20, 0.78, 0.48, 0.12)
         border.width: 1
         border.color: desktopWin.cGreen
-        opacity: 0.75
-        z: 5
+        z: 1
 
-        Behavior on x { NumberAnimation { duration: 60 } }
-        Behavior on y { NumberAnimation { duration: 60 } }
+        Behavior on x { NumberAnimation { duration: 50 } }
+        Behavior on y { NumberAnimation { duration: 50 } }
     }
 
     // ----------------------------------------------------------------- Rubber-band Selection Box
@@ -129,17 +127,17 @@ PanelWindow {
         y: Math.min(desktopWin.selectStartY, desktopWin.selectCurY)
         width: Math.abs(desktopWin.selectCurX - desktopWin.selectStartX)
         height: Math.abs(desktopWin.selectCurY - desktopWin.selectStartY)
-        color: desktopWin.cSel
+        color: Qt.rgba(0.20, 0.78, 0.48, 0.10)
         border.width: 1
         border.color: desktopWin.cGreen
-        opacity: 0.45
-        z: 6
+        z: 2
     }
 
     // ----------------------------------------------------------------- Desktop Icons Canvas
     Item {
         id: iconsContainer
         anchors.fill: parent
+        z: 3
 
         Repeater {
             model: desktopWin.desktopItems
@@ -161,35 +159,33 @@ PanelWindow {
                 width: desktopWin.cellW
                 height: desktopWin.cellH
 
-                x: isThisDragging ? dragPos.x : (desktopWin.gridMargin + curGridX * desktopWin.cellW)
-                y: isThisDragging ? dragPos.y : (desktopWin.gridMargin + curGridY * desktopWin.cellH)
-                z: isThisDragging ? 10 : 2
+                x: desktopWin.gridMargin + curGridX * desktopWin.cellW
+                y: desktopWin.gridMargin + curGridY * desktopWin.cellH
+                z: isThisDragging ? 100 : 5
 
-                property point dragPos: Qt.point(0, 0)
-                property point grabOffset: Qt.point(0, 0)
-
+                // Refined icon plate: completely transparent at rest, subtle modern tint on hover/select
                 Rectangle {
                     anchors.centerIn: parent
-                    width: desktopWin.cellW - 8
-                    height: desktopWin.cellH - 8
-                    color: isSelected ? desktopWin.cSel : (iconMouse.containsMouse ? "#121212" : "transparent")
+                    width: desktopWin.cellW - 6
+                    height: desktopWin.cellH - 6
+                    color: isSelected ? Qt.rgba(0.20, 0.78, 0.48, 0.18) : (iconMouse.containsMouse ? Qt.rgba(1, 1, 1, 0.08) : "transparent")
                     border.width: 1
-                    border.color: isSelected ? desktopWin.cGreen : (iconMouse.containsMouse ? "#2a2a2a" : "transparent")
-                    opacity: isThisDragging ? 0.75 : 1.0
+                    border.color: isSelected ? desktopWin.cGreen : (iconMouse.containsMouse ? Qt.rgba(1, 1, 1, 0.16) : "transparent")
+                    opacity: isThisDragging ? 0.70 : 1.0
 
                     ColumnLayout {
                         anchors.fill: parent
                         anchors.margins: 4
-                        spacing: 4
+                        spacing: 2
 
                         Item {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 44
+                            Layout.preferredHeight: 46
                             Layout.alignment: Qt.AlignHCenter
 
                             IconImage {
                                 anchors.centerIn: parent
-                                implicitSize: 38
+                                implicitSize: 40
                                 source: Quickshell.iconPath(itemDelegate.itemIcon, "application-x-executable")
                                 asynchronous: true
                             }
@@ -199,20 +195,14 @@ PanelWindow {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
 
-                            Rectangle {
-                                anchors.centerIn: nameLabel
-                                width: nameLabel.implicitWidth + 6
-                                height: nameLabel.implicitHeight + 2
-                                color: "#000000"
-                                opacity: isSelected ? 0.8 : 0.45
-                            }
-
                             Text {
                                 id: nameLabel
                                 anchors.centerIn: parent
                                 width: parent.width - 4
                                 text: itemDelegate.itemName
                                 color: "#ffffff"
+                                style: Text.Outline
+                                styleColor: "#000000"
                                 font.pixelSize: 11
                                 font.weight: isSelected ? Font.DemiBold : Font.Normal
                                 horizontalAlignment: Text.AlignHCenter
@@ -227,6 +217,13 @@ PanelWindow {
                 MouseArea {
                     id: iconMouse
                     anchors.fill: parent
+                    drag.target: itemDelegate
+                    drag.axis: Drag.XAndYAxis
+                    drag.minimumX: desktopWin.gridMargin
+                    drag.minimumY: desktopWin.gridMargin
+                    drag.maximumX: desktopWin.width - itemDelegate.width - desktopWin.gridMargin
+                    drag.maximumY: desktopWin.height - itemDelegate.height - 48
+
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     acceptedButtons: Qt.LeftButton | Qt.RightButton
@@ -251,42 +248,36 @@ PanelWindow {
                             ], desktopWin.height);
                             return;
                         }
-
                         desktopWin.selectedId = itemDelegate.itemId;
-                        itemDelegate.grabOffset = Qt.point(mouse.x, mouse.y);
-                        itemDelegate.dragPos = Qt.point(itemDelegate.x, itemDelegate.y);
                     }
 
-                    onPositionChanged: (mouse) => {
-                        if (pressed && (mouse.buttons & Qt.LeftButton)) {
-                            if (!desktopWin.isDragging) {
-                                desktopWin.isDragging = true;
-                                desktopWin.draggingId = itemDelegate.itemId;
-                            }
-                            const globalX = itemDelegate.x + mouse.x;
-                            const globalY = itemDelegate.y + mouse.y;
-                            itemDelegate.dragPos = Qt.point(globalX - itemDelegate.grabOffset.x, globalY - itemDelegate.grabOffset.y);
-
-                            // Calculate snap target
-                            const gx = Math.max(0, Math.round((globalX - desktopWin.gridMargin - (desktopWin.cellW / 2)) / desktopWin.cellW));
-                            const gy = Math.max(0, Math.round((globalY - desktopWin.gridMargin - (desktopWin.cellH / 2)) / desktopWin.cellH));
-                            desktopWin.targetGridX = gx;
-                            desktopWin.targetGridY = gy;
+                    onPositionChanged: {
+                        if (drag.active) {
+                            desktopWin.isDragging = true;
+                            desktopWin.draggingId = itemDelegate.itemId;
+                            const cx = itemDelegate.x + (desktopWin.cellW / 2) - desktopWin.gridMargin;
+                            const cy = itemDelegate.y + (desktopWin.cellH / 2) - desktopWin.gridMargin;
+                            desktopWin.targetGridX = Math.max(0, Math.round(cx / desktopWin.cellW));
+                            desktopWin.targetGridY = Math.max(0, Math.round(cy / desktopWin.cellH));
                         }
                     }
 
                     onReleased: (mouse) => {
-                        if (desktopWin.isDragging && desktopWin.draggingId === itemDelegate.itemId) {
+                        if (desktopWin.isDragging) {
                             desktopWin.isDragging = false;
                             desktopWin.draggingId = "";
                             itemDelegate.curGridX = desktopWin.targetGridX;
                             itemDelegate.curGridY = desktopWin.targetGridY;
+                            itemDelegate.x = desktopWin.gridMargin + desktopWin.targetGridX * desktopWin.cellW;
+                            itemDelegate.y = desktopWin.gridMargin + desktopWin.targetGridY * desktopWin.cellH;
                             desktopWin.saveItemPos(itemDelegate.itemId, desktopWin.targetGridX, desktopWin.targetGridY);
                         }
                     }
 
-                    onDoubleClicked: {
-                        Quickshell.execDetached(["sh", "-c", itemDelegate.itemExec]);
+                    onDoubleClicked: (mouse) => {
+                        if (mouse.button === Qt.LeftButton) {
+                            Quickshell.execDetached(["sh", "-c", itemDelegate.itemExec]);
+                        }
                     }
                 }
             }
@@ -309,7 +300,6 @@ PanelWindow {
                 BarState.quickOpen = false;
                 desktopWin.selectedId = "";
 
-                // Start rubber-band selection
                 desktopWin.isSelecting = true;
                 desktopWin.selectStartX = mouse.x;
                 desktopWin.selectStartY = mouse.y;
