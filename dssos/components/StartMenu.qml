@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Wayland
 
 // Start menu flyout, styled to match the bar and quick settings.
 PanelWindow {
@@ -23,6 +24,27 @@ PanelWindow {
     readonly property color surface: Style.surface
 
     property bool shown: false
+
+    // Hand keyboard focus to the search field when the menu opens.
+    //
+    // Verified on the VM: opening the menu and typing "term" left the field on
+    // its "Search apps" placeholder and moved the selection in the app grid to
+    // Volume Control. The keystrokes were arriving fine -- the layer surface
+    // does get keyboard interactivity -- but nothing in the menu held ACTIVE
+    // FOCUS, so the grid received them. The same reason Escape did nothing:
+    // its Keys.onEscapePressed is attached to the search field, which never had
+    // focus in the first place.
+    //
+    // forceActiveFocus has to be deferred: during the open animation the field
+    // is not yet laid out, and focusing an item mid-transition is unreliable.
+    onShownChanged: {
+        if (!shown) return;
+        Qt.callLater(function() { menu.focusSearch(); });
+    }
+
+    function focusSearch() {
+        if (search) search.forceActiveFocus();
+    }
     // true while the slide-out runs: card is visible but dead (no mask, no clicks)
     property bool closing: false
     property string query: ""

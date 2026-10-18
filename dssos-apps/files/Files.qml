@@ -235,8 +235,16 @@ Window {
                     win.selectedIndex = -1;
                     win.notify("Moved to Trash");
                     if (trashed) {
+                        // Ctrl+A then Delete trashes N items, but the undo only
+                        // ever called restoreTrash once, on trashed.path -- and
+                        // path is srcs[0]. So "Delete 12 items" then Ctrl+Z
+                        // brought back one file and lost eleven, silently.
+                        // trashed.paths is the full list, and restoreTrash
+                        // takes a list.
+                        const all = (trashed.paths && trashed.paths.length > 0)
+                                    ? trashed.paths.slice() : [trashed.path];
                         win.pushUndo("Delete " + trashed.name, function() {
-                            fileOps.restoreTrash(trashed.path);
+                            fileOps.restoreTrash(all);
                         });
                     }
                 } else {

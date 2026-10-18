@@ -198,9 +198,20 @@ QtObject {
     onMouseSpeedChanged: save()
     onTouchpadTapChanged: save()
     onTouchpadNaturalChanged: save()
-    onWfAnimateChanged: { save(); applyWayfireEffects(); }
-    onWfWobblyChanged: { save(); applyWayfireEffects(); }
-    onWfCubeChanged: { save(); applyWayfireEffects(); }
+    // These three used to call applyWayfireEffects() directly, and the JSON
+    // load assigns all three in a row: three calls, fifteen `dssos-settings-ctl`
+    // processes, fifteen rewrites of wayfire.ini, and Wayfire reconfigures on
+    // every one of them through inotify. Coalesced through one Timer below.
+    onWfAnimateChanged: { save(); wayfireSync.restart(); }
+    onWfWobblyChanged: { save(); wayfireSync.restart(); }
+    onWfCubeChanged: { save(); wayfireSync.restart(); }
+
+    // Long enough to swallow a burst of toggles, short enough to feel instant.
+    property var wayfireSync: Timer {
+        interval: 250
+        repeat: false
+        onTriggered: state.applyWayfireEffects()
+    }
     onNotificationsEnabledChanged: save()
     onDoNotDisturbChanged: save()
 
@@ -227,7 +238,41 @@ QtObject {
             notificationsEnabled: state.notificationsEnabled,
             doNotDisturb: state.doNotDisturb
         });
-        Quickshell.execDetached(["dssos-settings-ctl", "save", payload]);
+        state._pendingPayload = payload;
+        state.saveDebounce.restart();
+    }
+
+    // Debounced writer.
+    //
+    // save() used to call execDetached directly, once per property change. Drag
+    // a slider and that is one `dssos-settings-ctl save` per tick, all racing:
+    // execDetached gives no ordering guarantee, so the process that happened to
+    // finish last won. A slider dragged to the left and released could leave a
+    // stale, higher value on disk. Every write also woke the shell's
+    // FileView, so the taskbar repainted once per tick too.
+    //
+    // One Timer collapses a burst into a single write, and because there is
+    // only ever one in flight the newest payload cannot be overtaken by an
+    // older one.
+    property string _pendingPayload: ""
+    property var saveDebounce: Timer {
+        interval: 250
+        repeat: false
+        onTriggered: {
+            const p = state._pendingPayload;
+            state._pendingPayload = "";
+            if (p !== "") Quickshell.execDetached(["dssos-settings-ctl", "save", p]);
+        }
+    }
+
+    // Settings is closing: the debounce must not swallow the last change.
+    function flushSave() {
+        if (state.saveDebounce.running) {
+            state.saveDebounce.stop();
+            const p = state._pendingPayload;
+            state._pendingPayload = "";
+            if (p !== "") Quickshell.execDetached(["dssos-settings-ctl", "save", p]);
+        }
     }
 
     function profileLabel(p) {
@@ -250,7 +295,11 @@ QtObject {
         state.powerProfile = prof;
         Quickshell.execDetached(["dssos-settings-ctl", "power-set", prof]);
         // Re-read instead of assuming success: polkit can still refuse.
-        batteryTimer.count = 0;
+        // Was `batteryTimer.count = 0`. Timer has no `count` property, so this
+        // threw a TypeError on every power-profile change -- which aborted
+        // setPowerProfile() before powerGetProc.running and before save(), so
+        // the profile was applied but never read back and never persisted.
+        batteryTimer.restart();
         powerGetProc.running = true;
         save();
     }
@@ -268,6 +317,14 @@ QtObject {
     // word in the [core] plugins list, which is why dssos-settings-ctl grew a
     // wayfire-plugin verb instead of being handed a fixed string to write.
     function applyWayfireEffects() {
+        // The JSON load assigns wfAnimate/wfWobbly/wfCube while parsing, before
+        // `loaded` is set, so every one of those assignments fired this function
+        // against the DEFAULTS rather than the saved values: opening Settings
+        // once rewrote wayfire.ini with animate=none, wobbly=none, cube off,
+        // discarding whatever the user had chosen. Guarded, and coalesced by
+        // wayfireSync above.
+        if (!state.loaded) return;
+
         // Wayfire's animate plugin has no on/off key: an animation is either a
         // name or "none", on each of the three transitions.
         const anim = state.wfAnimate ? "zoom" : "none";
@@ -330,6 +387,9 @@ QtObject {
                     console.log("Settings JSON load fallback:", e);
                 }
                 state.loaded = true;
+                // Now that the real values are in, push them to Wayfire once --
+                // the guard above swallowed the assignments made during parsing.
+                state.wayfireSync.restart();
                 state.syncStyle();
             }
         }
@@ -472,7 +532,9 @@ QtObject {
         running: state.pollEnabled
         onTriggered: batteryProc.running = true
     }
-    onPollEnabledChanged: if (!pollEnabled) batteryTimer.count = 0;
+    // Same thing: `batteryTimer.count = 0` threw on every Settings close. A
+    // Timer is stopped with `stop()`, or `restart()` to rearm it from zero.
+    onPollEnabledChanged: if (!pollEnabled) batteryTimer.stop();
 
     property var randrProc: Process {
         id: randrProc

@@ -10,7 +10,7 @@ Window {
     id: win
     title: "Settings"
     visible: true
-    onClosing: if (standalone) Qt.quit()
+
     minimumWidth: 800
     minimumHeight: 560
     width: 960
@@ -32,8 +32,18 @@ Window {
         // it does not.
         if (SettingsState) SettingsState.pollEnabled = true;
     }
+    // There were TWO onClosing handlers in this Window (line 13 and here).
+    // QML keeps the last one for a given signal, so `if (standalone) Qt.quit()`
+    // was silently dead: standalone Settings.qml could never close itself.
+    // Merged into a single handler.
     onClosing: {
-        if (SettingsState) SettingsState.pollEnabled = false;
+        // The debounced writer must not swallow the very last change: without
+        // this, a setting changed within 250 ms of closing was simply lost.
+        if (SettingsState) {
+            SettingsState.flushSave();
+            SettingsState.pollEnabled = false;
+        }
+        if (standalone) Qt.quit();
     }
     Component.onDestruction: {
         if (SettingsState) SettingsState.pollEnabled = false;

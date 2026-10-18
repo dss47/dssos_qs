@@ -176,7 +176,11 @@ PanelWindow {
                                 Text {
                                     visible: hint !== ""
                                     text: hint
-                                    color: ison ? Style.dim : Style.disabled
+                                    // Style.disabled does not exist: the property list in Style.qml has no
+                                    // `disabled`, so this evaluated to undefined and Qt
+                                    // substituted transparent -- shortcuts on a greyed-out
+                                    // row were invisible instead of dimmed.
+                                    color: ison ? Style.dim : Style.border
                                     font.pixelSize: 11
                                     renderType: Text.NativeRendering
                                 }

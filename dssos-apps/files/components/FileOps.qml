@@ -45,6 +45,14 @@ QtObject {
         Qt.callLater(function () { _proc.running = true; });
     }
 
+// Every bash loop in this file ends with `done`, and `done` takes the exit
+// status of the LAST command in the loop body. When that command is an `if`
+// construct it always succeeds, so a loop in which every single operation
+// failed still exited 0: the status bar announced "Pasted", "Moved to Trash"
+// or "Deleted", and Files pushed an undo entry for files it had never
+// touched. Each script now carries an explicit rc and ends with `exit $rc`.
+//
+
     // ---------------------------------------------------------------- create
 
     function createFolder(parentDir, name) {
@@ -55,7 +63,7 @@ QtObject {
             '  c=1; while [ -e "$p/${n} (${c})" ]; do c=$((c + 1)); done; ' +
             '  n="${n} (${c})"; d="$p/$n"; ' +
             'fi; ' +
-            'mkdir -p -- "$d" && echo "CREATED:$d:$n"';
+            'if mkdir -p -- "$d"; then echo "CREATED:$d:$n"; else exit 1; fi';
         run("mkdir", ["bash", "-c", script, "--", parentDir, baseName], function () {
             return "Could not create folder in \"" + parentDir + "\"";
         });
@@ -68,14 +76,43 @@ QtObject {
             ops.finished("rename", false, "Name cannot be empty", "");
             return;
         }
+        const name = newName.trim();
+
+        // The name is concatenated straight into the target path, so a name
+        // holding a slash or a dot-dot does not stay inside the folder. The
+        // rename field accepted "a/../../elsewhere" and ".." and quietly moved
+        // the file somewhere the user never pointed at.
+        if (name.indexOf("/") !== -1 || name === "." || name === "..") {
+            ops.finished("rename", false, "A name cannot contain \"/\", \".\" or \"..\"", "");
+            return;
+        }
+
         const dir = oldPath.substring(0, oldPath.lastIndexOf("/"));
-        const target = dir + "/" + newName.trim();
+        const target = dir + "/" + name;
         if (target === oldPath) {
             ops.finished("rename", false, "", "");
             return;
         }
-        run("rename", ["mv", "-T", "--", oldPath, target], function () {
-            return "Could not rename to \"" + newName.trim() + "\"";
+
+        // Refusing to overwrite needs two things, and only doing one of them is
+        // a trap:
+        //
+        //   `mv -T -- src dst` replaces dst outright. No prompt, no backup, no
+        //   undo entry -- renaming onto an existing file destroyed it. Verified:
+        //   the target's contents were replaced.
+        //
+        //   `mv -nT -- src dst` leaves the target alone, but it exits 0 when it
+        //   skips. So FileOps reported "Renamed" and pushed an undo entry while
+        //   nothing at all had moved. Also verified on the VM.
+        //
+        // So the existence test runs first and produces a distinct exit code,
+        // and -n stays as the guard for the race between the two.
+        const script =
+            'if [ -e "$2" ]; then echo "RENAMEEXISTS"; exit 3; fi; ' +
+            'mv -nT -- "$1" "$2" || exit 1; ' +
+            'echo "RENAMED:$2"';
+        run("rename", ["bash", "-c", script, "--", oldPath, target], function () {
+            return "Could not rename to \"" + name + "\"";
         });
     }
 
@@ -93,6 +130,7 @@ QtObject {
         if (!srcs || srcs.length === 0) return;
         const script =
             'd="$1"; shift; ' +
+            'rc=0; ' +
             'for s in "$@"; do ' +
             '  base="$(basename "$s")"; target="$d/$base"; ' +
             '  if [ -e "$target" ]; then ' +
@@ -101,8 +139,9 @@ QtObject {
             '    c=1; while [ -e "$d/${name} (${c})${ext}" ]; do c=$((c + 1)); done; ' +
             '    target="$d/${name} (${c})${ext}"; ' +
             '  fi; ' +
-            '  if cp -r -- "$s" "$target"; then echo "COPIED:$target"; fi; ' +
-            'done';
+            '  if cp -r -- "$s" "$target"; then echo "COPIED:$target"; else rc=1; fi; ' +
+            'done; ' +
+            'exit $rc';
         const cmd = ["bash", "-c", script, "--", destDir].concat(srcs);
         run("copy", cmd, function () {
             return "Could not paste into \"" + destDir + "\"";
@@ -113,6 +152,7 @@ QtObject {
         if (!srcs || srcs.length === 0) return;
         const script =
             'd="$1"; shift; ' +
+            'rc=0; ' +
             'for s in "$@"; do ' +
             '  base="$(basename "$s")"; target="$d/$base"; ' +
             '  if [ -e "$target" ]; then ' +
@@ -121,8 +161,9 @@ QtObject {
             '    c=1; while [ -e "$d/${name} (${c})${ext}" ]; do c=$((c + 1)); done; ' +
             '    target="$d/${name} (${c})${ext}"; ' +
             '  fi; ' +
-            '  if mv -- "$s" "$target"; then echo "MOVED:$target"; fi; ' +
-            'done';
+            '  if mv -- "$s" "$target"; then echo "MOVED:$target"; else rc=1; fi; ' +
+            'done; ' +
+            'exit $rc';
         const cmd = ["bash", "-c", script, "--", destDir].concat(srcs);
         run("cut", cmd, function () {
             return "Could not move into \"" + destDir + "\"";
@@ -139,12 +180,13 @@ QtObject {
     // rather than being silently dropped.
     function pasteText(text, destDir) {
         const script =
-            'd="$1"; t="$2"; n="Pasted Text.txt"; ' +
+            'd="$1"; t="$2"; n="Pasted Text.txt"; rc=0; ' +
             'if [ -e "$d/$n" ]; then ' +
             '  c=1; while [ -e "$d/Pasted Text (${c}).txt" ]; do c=$((c + 1)); done; ' +
             '  n="Pasted Text (${c}).txt"; ' +
             'fi; ' +
-            'printf "%s" "$t" > "$d/$n" && echo "CREATED:$d/$n"';
+            'if printf "%s" "$t" > "$d/$n"; then echo "CREATED:$d/$n"; else rc=1; fi; ' +
+            'exit $rc';
         // The text is an argv element, so embedded newlines, quotes and even a
         // leading "-" are data rather than syntax.
         run("paste_text", ["bash", "-c", script, "--", destDir, text], function () {
@@ -165,56 +207,87 @@ QtObject {
         const list = Array.isArray(path) ? path : [path];
         if (list.length === 0) return;
         const script =
+            'rc=0; ' +
             'for p in "$@"; do ' +
             '  if gio trash -- "$p" 2>/dev/null; then echo "TRASHED:$p"; ' +
-            '  else echo "TRASHFAILED:$p"; fi; ' +
-            'done';
+            '  else echo "TRASHFAILED:$p"; rc=1; fi; ' +
+            'done; ' +
+            'exit $rc';
         run("trash", ["bash", "-c", script, "--"].concat(list), function () {
             return "Cannot Trash on this filesystem \u2014 press Shift+Delete to delete permanently";
         });
     }
 
     function restoreTrash(pathOrName) {
+        // Accepts a list: the Delete undo restores every trashed item at once,
+        // and before this it called restoreTrash once per item -- but all of
+        // those calls shared the single _proc, so each one overwrote the
+        // previous command and only the last file was ever restored.
+        //
+        // Two other fixes inside the script:
+        // - the trash root honours XDG_DATA_HOME instead of assuming
+        //   ~/.local/share, which is where gio puts it when the variable is set;
+        // - an existing file at the original path is no longer overwritten.
         const pyScript =
-            'import os, sys, urllib.parse, glob, shutil\n' +
-            'target = sys.argv[1]\n' +
-            'trash = os.path.expanduser("~/.local/share/Trash")\n' +
-            'base = os.path.basename(target)\n' +
-            'info_file = os.path.join(trash, "info", f"{base}.trashinfo")\n' +
-            'file_path = os.path.join(trash, "files", base)\n' +
-            'if not (os.path.exists(info_file) and os.path.exists(file_path)):\n' +
-            '    cands = []\n' +
+            'import os, sys, glob, shutil, urllib.parse\n' +
+            'home = os.path.expanduser("~")\n' +
+            'data = os.environ.get("XDG_DATA_HOME") or os.path.join(home, ".local", "share")\n' +
+            'trash = os.path.join(data, "Trash")\n' +
+            '\n' +
+            'def locate(target):\n' +
+            '    base = os.path.basename(target)\n' +
+            '    info = os.path.join(trash, "info", base + ".trashinfo")\n' +
+            '    fpath = os.path.join(trash, "files", base)\n' +
+            '    if os.path.exists(info) and os.path.exists(fpath):\n' +
+            '        return info, fpath\n' +
+            '    hits = []\n' +
             '    for inf in glob.glob(os.path.join(trash, "info", "*.trashinfo")):\n' +
             '        try:\n' +
             '            with open(inf, "r", encoding="utf-8") as f:\n' +
             '                for line in f:\n' +
             '                    if line.startswith("Path="):\n' +
-            '                        p = urllib.parse.unquote(line.strip().split("=", 1)[1])\n' +
-            '                        if p == target:\n' +
-            '                            cands.append((os.path.getmtime(inf), inf))\n' +
+            '                        if urllib.parse.unquote(line.split("=", 1)[1].strip()) == target:\n' +
+            '                            hits.append((os.path.getmtime(inf), inf))\n' +
             '                        break\n' +
             '        except Exception:\n' +
             '            pass\n' +
-            '    if not cands:\n' +
-            '        sys.stderr.write("Trash metadata not found\\n")\n' +
-            '        sys.exit(1)\n' +
-            '    cands.sort(reverse=True)\n' +
-            '    info_file = cands[0][1]\n' +
-            '    bname = os.path.basename(info_file)[:-len(".trashinfo")]\n' +
-            '    file_path = os.path.join(trash, "files", bname)\n' +
-            'with open(info_file, "r", encoding="utf-8") as f:\n' +
-            '    for line in f:\n' +
-            '        if line.startswith("Path="):\n' +
-            '            orig = urllib.parse.unquote(line.strip().split("=", 1)[1])\n' +
-            '            os.makedirs(os.path.dirname(orig), exist_ok=True)\n' +
-            '            shutil.move(file_path, orig)\n' +
-            '            os.remove(info_file)\n' +
-            '            print(f"RESTORED:{orig}:{base}")\n' +
-            '            sys.exit(0)\n' +
-            'sys.stderr.write("No Path in metadata\\n")\n' +
-            'sys.exit(1)\n';
-        run("restore", ["python3", "-c", pyScript, pathOrName], function () {
-            return "Could not restore \"" + pathOrName.split("/").pop() + "\" from Trash";
+            '    if not hits:\n' +
+            '        return None, None\n' +
+            '    hits.sort(reverse=True)\n' +
+            '    info = hits[0][1]\n' +
+            '    return info, os.path.join(trash, "files", os.path.basename(info)[:-len(".trashinfo")])\n' +
+            '\n' +
+            'def original_of(info):\n' +
+            '    with open(info, "r", encoding="utf-8") as f:\n' +
+            '        for line in f:\n' +
+            '            if line.startswith("Path="):\n' +
+            '                return urllib.parse.unquote(line.split("=", 1)[1].strip())\n' +
+            '    return None\n' +
+            '\n' +
+            'rc = 0\n' +
+            'for target in sys.argv[1:]:\n' +
+            '    info, fpath = locate(target)\n' +
+            '    if info is None:\n' +
+            '        sys.stderr.write("Trash metadata not found\\n"); rc = 1; continue\n' +
+            '    orig = original_of(info)\n' +
+            '    if not orig:\n' +
+            '        sys.stderr.write("No Path in metadata\\n"); rc = 1; continue\n' +
+            '    # shutil.move() replaces whatever is at the destination without asking.\n' +
+            '    # Restoring over a file the user re-created in the meantime destroyed that\n' +
+            '    # file, so refuse instead and report it.\n' +
+            '    if os.path.exists(orig):\n' +
+            '        sys.stderr.write("Already exists: %s\\n" % orig); rc = 1; continue\n' +
+            '    os.makedirs(os.path.dirname(orig), exist_ok=True)\n' +
+            '    shutil.move(fpath, orig)\n' +
+            '    os.remove(info)\n' +
+            '    print("RESTORED:%s:%s" % (orig, os.path.basename(target)))\n' +
+            'sys.exit(rc)\n';
+        const list = Array.isArray(pathOrName) ? pathOrName : [pathOrName];
+        if (list.length === 0) return;
+        run("restore", ["python3", "-c", pyScript].concat(list), function () {
+            return list.length === 1
+                ? "Could not restore \"" + list[0].split("/").pop() + "\" from Trash"
+                : "Could not restore " + list.length + " items from Trash";
         });
     }
 
@@ -231,9 +304,11 @@ QtObject {
         const list = Array.isArray(path) ? path : [path];
         if (list.length === 0) return;
         const script =
+            'rc=0; ' +
             'for p in "$@"; do ' +
-            '  if rm -rf -- "$p"; then echo "DELETED:$p"; else echo "DELETEFAILED:$p"; fi; ' +
-            'done';
+            '  if rm -rf -- "$p"; then echo "DELETED:$p"; else echo "DELETEFAILED:$p"; rc=1; fi; ' +
+            'done; ' +
+            'exit $rc';
         run("permanent", ["bash", "-c", script, "--"].concat(list), function () {
             return list.length === 1
                 ? "Could not delete \"" + list[0].split("/").pop() + "\""
