@@ -27,6 +27,8 @@ Item {
     property bool nightActive: false
     property bool saverActive: false
     property bool hotspotActive: false
+    property bool darkModeActive: true
+    property bool recordActive: false
 
     // Real Power Saver state via powerprofilesctl
     Process {
@@ -64,11 +66,13 @@ Item {
         }
     }
 
-    // Real Volume via Pipewire
+    // Real Audio & Microphone via Pipewire
     readonly property var audioSink: Pipewire.defaultAudioSink
     readonly property real volumeVal: audioSink?.audio ? audioSink.audio.volume : 0.45
     readonly property bool audioMuted: audioSink?.audio ? audioSink.audio.muted : false
-    PwObjectTracker { objects: [root.audioSink] }
+    readonly property var audioSource: Pipewire.defaultAudioSource
+    readonly property bool micMuted: audioSource?.audio ? audioSource.audio.muted : false
+    PwObjectTracker { objects: [root.audioSink, root.audioSource] }
 
     // Real Bluetooth state
     Process {
@@ -130,7 +134,7 @@ Item {
         signal clicked()
 
         Layout.fillWidth: true
-        Layout.preferredHeight: 54
+        Layout.preferredHeight: 48
         radius: 0
         color: tile.active ? root.cGreen : (tileMouse.containsMouse ? "#181818" : "#0d0d0d")
         border.width: 1
@@ -149,14 +153,14 @@ Item {
 
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 12
-            anchors.rightMargin: 12
-            spacing: 10
+            anchors.leftMargin: 10
+            anchors.rightMargin: 10
+            spacing: 8
 
             DssIcon {
                 Layout.alignment: Qt.AlignVCenter
                 name: tile.iconName
-                color: tile.active ? "#04130a" : (tileMouse.containsMouse ? root.cText : root.cMuted)
+                color: tile.active ? "#04130a" : "#ffffff"
                 iconSize: 18
             }
 
@@ -167,8 +171,8 @@ Item {
 
                 Text {
                     text: tile.title
-                    color: tile.active ? "#04130a" : root.cText
-                    font.pixelSize: 12
+                    color: tile.active ? "#04130a" : "#ffffff"
+                    font.pixelSize: 11
                     font.weight: tile.active ? Font.DemiBold : Font.Normal
                     elide: Text.ElideRight
                     Layout.fillWidth: true
@@ -177,7 +181,7 @@ Item {
                 Text {
                     text: tile.subtitle
                     color: tile.active ? "#0e341d" : root.cMuted
-                    font.pixelSize: 10
+                    font.pixelSize: 9
                     elide: Text.ElideRight
                     Layout.fillWidth: true
                 }
@@ -254,17 +258,17 @@ Item {
 
             Item {
                 anchors.fill: parent
-                anchors.margins: 20
-                anchors.leftMargin: 22
-                anchors.rightMargin: 22
+                anchors.margins: 14
+                anchors.leftMargin: 16
+                anchors.rightMargin: 16
 
                 GridLayout {
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                     columns: 4
-                    rowSpacing: 10
-                    columnSpacing: 10
+                    rowSpacing: 8
+                    columnSpacing: 8
 
                     // 1. Wi-Fi
                     WideTile {
@@ -353,7 +357,60 @@ Item {
                         }
                     }
 
-                    // 8. Lock screen
+                    // 8. Dark mode
+                    WideTile {
+                        iconName: "dk"
+                        title: "Dark mode"
+                        subtitle: root.darkModeActive ? "On" : "Off"
+                        active: root.darkModeActive
+                        onClicked: {
+                            root.darkModeActive = !root.darkModeActive;
+                        }
+                    }
+
+                    // 9. Screenshot
+                    WideTile {
+                        iconName: "sc"
+                        title: "Screenshot"
+                        subtitle: "Capture area"
+                        active: false
+                        onClicked: {
+                            BarState.quickOpen = false;
+                            Quickshell.execDetached(["sh", "-c", "sleep 0.2 && grim ~/Pictures/screenshot-$(date +%s).png"]);
+                        }
+                    }
+
+                    // 10. Screen record
+                    WideTile {
+                        iconName: "rc"
+                        title: "Record"
+                        subtitle: root.recordActive ? "Recording..." : "Screen record"
+                        active: root.recordActive
+                        onClicked: {
+                            root.recordActive = !root.recordActive;
+                            if (root.recordActive) {
+                                BarState.quickOpen = false;
+                                Quickshell.execDetached(["sh", "-c", "wf-recorder -f ~/Videos/recording-$(date +%s).mp4 2>/dev/null"]);
+                            } else {
+                                Quickshell.execDetached(["pkill", "-INT", "wf-recorder"]);
+                            }
+                        }
+                    }
+
+                    // 11. Microphone
+                    WideTile {
+                        iconName: "mc"
+                        title: "Microphone"
+                        subtitle: root.micMuted ? "Muted" : "Active"
+                        active: !root.micMuted
+                        onClicked: {
+                            if (root.audioSource?.audio) {
+                                root.audioSource.audio.muted = !root.audioSource.audio.muted;
+                            }
+                        }
+                    }
+
+                    // 12. Lock screen
                     WideTile {
                         iconName: "lk"
                         title: "Lock screen"

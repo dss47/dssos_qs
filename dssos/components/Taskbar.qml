@@ -266,7 +266,7 @@ PanelWindow {
                 Layout.preferredWidth: stRow.implicitWidth + 28
                 color: BarState.quickOpen ? bar.cSel : (stMouse.containsMouse ? bar.cHover : "transparent")
 
-                readonly property color stColor: (BarState.quickOpen || stMouse.containsMouse) ? bar.cText : bar.cMuted
+                readonly property color stColor: "#ffffff"
 
                 RowLayout {
                     id: stRow
