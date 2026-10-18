@@ -1,9 +1,41 @@
 singleton BarState BarState.qml
 singleton ContextMenuState ContextMenuState.qml
 singleton Style Style.qml
+singleton SettingsState SettingsState.qml
+singleton SettingsTheme SettingsTheme.qml
+SetRailButton SetRailButton.qml
+SetPageItem SetPageItem.qml
+SetCard SetCard.qml
+SetRow SetRow.qml
+SetToggle SetToggle.qml
+SetSlider SetSlider.qml
+SetDropdown SetDropdown.qml
+SetRadio SetRadio.qml
+SetPageDisplay SetPageDisplay.qml
+SetPageSound SetPageSound.qml
+SetPageNotifications SetPageNotifications.qml
+SetPagePower SetPagePower.qml
+SetPageStorage SetPageStorage.qml
+SetPageMultitasking SetPageMultitasking.qml
+SetPageClipboard SetPageClipboard.qml
+SetPageAbout SetPageAbout.qml
+SetPageKeyboard SetPageKeyboard.qml
+SetPageMouse SetPageMouse.qml
+SetPageWifi SetPageWifi.qml
+SetPageVpn SetPageVpn.qml
+SetPageBackground SetPageBackground.qml
+SetPageColors SetPageColors.qml
+SetPageApps SetPageApps.qml
+SetPageAccount SetPageAccount.qml
+SetPageDateTime SetPageDateTime.qml
+SetPageWorkspaces SetPageWorkspaces.qml
+SetPageDecorations SetPageDecorations.qml
+SetPagePrivacy SetPagePrivacy.qml
+SetPageUpdate SetPageUpdate.qml
 Taskbar Taskbar.qml
 QuickSettings QuickSettings.qml
 StartMenu StartMenu.qml
 HiddenTray HiddenTray.qml
 ContextMenu ContextMenu.qml
 OutsideClick OutsideClick.qml
+Settings Settings.qml

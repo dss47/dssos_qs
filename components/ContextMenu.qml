@@ -1,38 +1,34 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Wayland
 
 // The ONE context menu window for the whole OS. Single instance in shell.qml.
-// Opens upward from (ax, marginBottom). View binds to primitive lists only.
 PanelWindow {
     id: ctx
 
-    anchors { bottom: true; left: true }
-    margins {
-        // fixed 220px width, so clamping is exact; opens above marginBottom
-        left: Math.max(8, Math.min(ContextMenuState.ax - 8, screen.width - 220 - 8))
-        bottom: ContextMenuState.marginBottom
+    anchors {
+        top: !ContextMenuState.openAbove
+        bottom: ContextMenuState.openAbove
+        left: true
     }
-    implicitWidth: 220
-    implicitHeight: Math.min(360, list.implicitHeight + 16)
+    margins {
+        left: Math.max(8, Math.min(ContextMenuState.cursorX, (screen ? screen.width : 1366) - ctx.implicitWidth - 8))
+        top: !ContextMenuState.openAbove ? ContextMenuState.topMargin : 0
+        bottom: ContextMenuState.openAbove ? ContextMenuState.bottomMargin : 0
+    }
+    implicitWidth: 215
+    implicitHeight: Math.min(360, list.implicitHeight + 14)
+    onImplicitHeightChanged: if (shown) settleTimer.restart()
     color: "transparent"
+    WlrLayershell.layer: WlrLayer.Overlay
     visible: true
-    mask: ctx.shown ? openMask : closedMask
+    mask: (shown || closing) ? openMask : closedMask
     exclusionMode: ExclusionMode.Ignore
 
     property bool shown: false
-    // true while fading out: card visible but dead (no mask, no clicks)
     property bool closing: false
 
-    OutsideClick {
-        visible: ctx.shown && ContextMenuState.open
-        onClicked: ContextMenuState.hide()
-    }
-
-    Region { id: openMask; item: card }
-    Region { id: closedMask; width: 0; height: 0 }
-
-    // fast fade, no slide: menus must feel instant
     NumberAnimation {
         id: fadeIn
         target: card
@@ -40,13 +36,34 @@ PanelWindow {
         to: 1
         duration: 120
         easing.type: Easing.OutCubic
+        onFinished: settleTimer.restart()
     }
+
+    Timer {
+        id: settleTimer
+        interval: 30
+        repeat: false
+        onTriggered: {
+            card.opacity = 0.999;
+            postSettleTimer.restart();
+        }
+    }
+
+    Timer {
+        id: postSettleTimer
+        interval: 16
+        repeat: false
+        onTriggered: {
+            card.opacity = 1.0;
+        }
+    }
+
     NumberAnimation {
         id: fadeOut
         target: card
         property: "opacity"
         to: 0
-        duration: 100
+        duration: 90
         easing.type: Easing.InCubic
         onFinished: ctx.closing = false
     }
@@ -60,19 +77,36 @@ PanelWindow {
                 ctx.shown = true;
                 card.opacity = 0;
                 fadeIn.restart();
+                card.forceActiveFocus();
             } else if (ctx.shown) {
                 fadeIn.stop();
-                ctx.shown = false;   // drop the input mask NOW, card keeps fading
+                settleTimer.stop();
+                postSettleTimer.stop();
+                ctx.shown = false;
                 ctx.closing = true;
                 fadeOut.restart();
             }
         }
     }
 
+    OutsideClick {
+        targetLayer: WlrLayer.Top
+        visible: ctx.shown || ctx.closing
+        onClicked: ContextMenuState.hide()
+        onRightClicked: (rx, ry) => {
+            ContextMenuState.hide();
+            if (ContextMenuState.desktopMenuCallback) {
+                ContextMenuState.desktopMenuCallback(rx, ry);
+            }
+        }
+    }
+
+    Region { id: openMask; item: card }
+    Region { id: closedMask; width: 0; height: 0 }
+
     Item {
         id: card
-        width: parent.width
-        height: parent.height
+        anchors.fill: parent
         opacity: 0
         visible: ctx.shown || ctx.closing
         enabled: ctx.shown && !ctx.closing
@@ -81,46 +115,34 @@ PanelWindow {
 
         Rectangle {
             anchors.fill: parent
-            radius: 7
-            color: Style.surface
+            radius: 0
+            color: Style.surface || "#000000"
             border.width: 1
-            border.color: Style.border
+            border.color: "#383838"
         }
 
         Flickable {
-            anchors { fill: parent; margins: 8 }
+            anchors { fill: parent; topMargin: 6; bottomMargin: 6; leftMargin: 0; rightMargin: 0 }
             contentHeight: list.implicitHeight
             clip: true
             boundsBehavior: Flickable.StopAtBounds
+
             Column {
                 id: list
                 width: parent.width
-                spacing: 2
-                // app name header
-                Text {
-                    visible: ContextMenuState.title !== ""
-                    width: parent.width
-                    height: 28
-                    verticalAlignment: Text.AlignVCenter
-                    leftPadding: 12
-                    text: ContextMenuState.title
-                    color: Style.dim
-                    font.pixelSize: 12
-                    font.bold: true
-                    elide: Text.ElideRight
-                }
+                spacing: 1
+
                 Repeater {
                     model: ContextMenuState.rowsModel
                     delegate: Item {
                         required property int index
                         required property string label
-                        required property string icon
                         required property string hint
                         required property bool danger
                         required property bool ison
                         required property string kind
                         width: list.width
-                        height: kind === "sep" ? 9 : 36
+                        height: kind === "sep" ? 9 : 32
 
                         // separator line
                         Rectangle {
@@ -128,55 +150,38 @@ PanelWindow {
                             anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter; leftMargin: 12; rightMargin: 12 }
                             height: 1
                             color: Style.text
-                            opacity: 0.1
+                            opacity: 0.12
                         }
 
-                        // action row (highlight animates color alpha, NOT opacity:
-                        // opacity would fade the labels nested inside too)
+                        // action row
                         Rectangle {
                             visible: kind !== "sep"
                             anchors.fill: parent
-                            radius: 5
+                            radius: 0
                             color: Qt.rgba(1, 1, 1, !ison ? 0 : (rowMouse.pressed ? Style.press : (rowMouse.containsMouse ? Style.hover : 0)))
-                            Behavior on color { ColorAnimation { duration: 80 } }
 
                             RowLayout {
-                                anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
+                                anchors { fill: parent; leftMargin: 16; rightMargin: 16 }
                                 spacing: 10
-                                Image {
-                                    visible: icon !== ""
-                                    Layout.preferredWidth: 15
-                                    Layout.preferredHeight: 15
-                                    sourceSize.width: 30
-                                    sourceSize.height: 30
-                                    source: icon !== "" ? "../assets/icons/" + icon + ".svg" : ""
-                                }
+
                                 Text {
                                     Layout.fillWidth: true
                                     text: label
-                                    color: danger ? Style.danger : (ison ? Style.text : Style.dim)
+                                    color: ison ? Style.text : Style.dim
                                     font.pixelSize: 13
+                                    renderType: Text.NativeRendering
                                     elide: Text.ElideRight
                                 }
-                                // shortcut hint pill, like ⌘C
-                                Rectangle {
+
+                                Text {
                                     visible: hint !== ""
-                                    Layout.preferredWidth: hintText.implicitWidth + 12
-                                    Layout.preferredHeight: 20
-                                    radius: 4
-                                    color: "transparent"
-                                    border.width: 1
-                                    border.color: Style.text
-                                    opacity: 0.35
-                                    Text {
-                                        id: hintText
-                                        anchors.centerIn: parent
-                                        text: hint
-                                        color: Style.text
-                                        font.pixelSize: 11
-                                    }
+                                    text: hint
+                                    color: ison ? Style.dim : Style.disabled
+                                    font.pixelSize: 11
+                                    renderType: Text.NativeRendering
                                 }
                             }
+
                             MouseArea {
                                 id: rowMouse
                                 anchors.fill: parent

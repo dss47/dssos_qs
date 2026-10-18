@@ -333,8 +333,12 @@ PanelWindow {
                 onClicked: console.log("Record clicked")
             }
             Tile {
-                icon: "settings"; active: false
-                onClicked: console.log("Settings clicked")
+                icon: "settings"
+                active: SettingsState.open
+                onClicked: {
+                    BarState.quickOpen = false;
+                    SettingsState.open = true;
+                }
             }
         }
 
@@ -387,8 +391,6 @@ PanelWindow {
                 contentHeight: wifiList.height
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
-                // native wheel scrolling (the old handler read parent.contentY,
-                // which is the content item, not the Flickable)
                 Column {
                     id: wifiList
                     width: parent.width
@@ -481,7 +483,6 @@ PanelWindow {
                 contentHeight: btList.height
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
-                // native wheel scrolling (see wifi list)
                 Column {
                     id: btList
                     width: parent.width

@@ -45,8 +45,14 @@ PanelWindow {
         for (const tl of live) {
             const raw = (tl.appId ?? "").toString().trim();
             if (raw === "") continue;
-            const k = raw.toLowerCase();
-            if (!map.has(k)) map.set(k, { appId: raw, entry: DesktopEntries.heuristicLookup(raw), toplevels: [] });
+            // standalone `qs -p` windows all share app_id "quickshell":
+            // split them by window title so each shows its own icon/name.
+            const rl = raw.toLowerCase();
+            const title = ((tl.title ?? "").toString().trim());
+            const isQs = (rl === "quickshell" || rl === "qs" || rl === "org.quickshell");
+            const key = (isQs && title !== "") ? title : raw;
+            const k = key.toLowerCase();
+            if (!map.has(k)) map.set(k, { appId: key, entry: DesktopEntries.heuristicLookup(key), toplevels: [] });
             map.get(k).toplevels.push(tl);
         }
         return [...map.values()];
