@@ -211,7 +211,42 @@ Item {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: {
+                                acceptedButtons: Qt.LeftButton | Qt.RightButton
+
+                                onClicked: mouse => {
+                                    if (mouse.button === Qt.RightButton) {
+                                        const p = riMouse.mapToItem(null, mouse.x, mouse.y);
+                                        const screenH = (root.screen ? root.screen.height : 1080);
+                                        const globalY = screenH - 250 + p.y;
+                                        const filePath = modelData.path;
+                                        const fileName = modelData.name;
+
+                                        ContextMenuState.showAt(p.x, globalY, [
+                                            {
+                                                label: "Open " + fileName,
+                                                action: function() {
+                                                    BarState.startOpen = false;
+                                                    Quickshell.execDetached(["xdg-open", filePath]);
+                                                }
+                                            },
+                                            {
+                                                label: "Open containing folder",
+                                                action: function() {
+                                                    BarState.startOpen = false;
+                                                    Quickshell.execDetached(["dssos-app", "files", filePath]);
+                                                }
+                                            },
+                                            { sep: true },
+                                            {
+                                                label: "Copy file path",
+                                                action: function() {
+                                                    Quickshell.execDetached(["sh", "-c", "echo -n '" + filePath + "' | wl-copy"]);
+                                                }
+                                            }
+                                        ], screenH);
+                                        return;
+                                    }
+
                                     BarState.startOpen = false;
                                     Quickshell.execDetached(["xdg-open", modelData.path]);
                                 }
@@ -312,7 +347,62 @@ Item {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: {
+                                acceptedButtons: Qt.LeftButton | Qt.RightButton
+
+                                onClicked: mouse => {
+                                    const appName = (entry && entry.name) ? entry.name : modelData.name;
+                                    const appId = (entry && entry.id) ? entry.id.replace(/\.desktop$/, "") : (modelData.id ?? appName.toLowerCase());
+
+                                    if (mouse.button === Qt.RightButton) {
+                                        const isPinned = BarState.isPinned(appId);
+                                        const p = giMouse.mapToItem(null, mouse.x, mouse.y);
+                                        const screenH = (root.screen ? root.screen.height : 1080);
+                                        const globalY = screenH - 250 + p.y;
+
+                                        ContextMenuState.showAt(p.x, globalY, [
+                                            {
+                                                label: "Open " + appName,
+                                                action: function() {
+                                                    BarState.startOpen = false;
+                                                    if (entry) {
+                                                        root.appLaunched(entry.name);
+                                                        entry.execute();
+                                                    } else {
+                                                        root.appLaunched(modelData.name);
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                label: "Run in Terminal",
+                                                action: function() {
+                                                    BarState.startOpen = false;
+                                                    const cmd = (entry && entry.execString) ? entry.execString : appId;
+                                                    Quickshell.execDetached(["foot", "-e", "sh", "-c", cmd + "; exec $SHELL"]);
+                                                }
+                                            },
+                                            { sep: true },
+                                            {
+                                                label: isPinned ? "Unpin from taskbar" : "Pin to taskbar",
+                                                action: function() {
+                                                    if (isPinned) BarState.unpinApp(appId);
+                                                    else BarState.pinApp(appId);
+                                                }
+                                            },
+                                            { sep: true },
+                                            {
+                                                label: "Open app location",
+                                                action: function() {
+                                                    BarState.startOpen = false;
+                                                    const loc = (entry && entry.fileName) ? entry.fileName : "/usr/share/applications";
+                                                    Quickshell.execDetached(["dssos-app", "files", loc]);
+                                                }
+                                            }
+                                        ], screenH);
+                                        return;
+                                    }
+
+                                    // Left click
+                                    BarState.startOpen = false;
                                     if (entry) {
                                         root.appLaunched(entry.name);
                                         entry.execute();

@@ -41,7 +41,7 @@ PanelWindow {
     readonly property color cHover: "#151515"
 
     // App state & live tracking
-    property var pinnedIds: ["dssos-files", "foot", "dssos-tasks", "dssos-settings"]
+    readonly property var pinnedIds: BarState.pinnedIds
     readonly property var taskApps: {
         const live = ToplevelManager.toplevels.values;
         const _entries = DesktopEntries.applications.values.length;
@@ -244,6 +244,7 @@ PanelWindow {
                                         const winsRef = wins;
                                         const focusedRef = focused;
                                         const appName = (entryRef && entryRef.name) ? entryRef.name : appId;
+                                        const isPinned = BarState.isPinned(appId);
                                         ContextMenuState.showAt(p.x, bar.y, [
                                             { label: "Open new window", enabled: !!entryRef, action: function() { if (entryRef) entryRef.execute(); } },
                                             { label: "Focus", enabled: winsRef.length > 0, action: function() {
@@ -255,8 +256,16 @@ PanelWindow {
                                                 next.minimized = false;
                                                 next.activate();
                                             } },
-                                            { label: "Close window", enabled: winsRef.length > 0, action: function() { if (focusedRef) focusedRef.close(); } },
                                             { sep: true },
+                                            {
+                                                label: isPinned ? "Unpin from taskbar" : "Pin to taskbar",
+                                                action: function() {
+                                                    if (isPinned) BarState.unpinApp(appId);
+                                                    else BarState.pinApp(appId);
+                                                }
+                                            },
+                                            { sep: true },
+                                            { label: "Close window", enabled: winsRef.length > 0, action: function() { if (focusedRef) focusedRef.close(); } },
                                             { label: "Close all windows", danger: true, enabled: winsRef.length > 0, action: function() { for (let wi = 0; wi < winsRef.length; wi++) winsRef[wi].close(); } }
                                         ]);
                                         return;

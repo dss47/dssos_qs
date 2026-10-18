@@ -39,4 +39,11 @@ ShellRoot {
         target: "context"
         function hide(): void { Comp.ContextMenuState.hide(); }
     }
+
+    IpcHandler {
+        target: "bar"
+        function pin(appId: string): void { Comp.BarState.pinApp(appId); }
+        function unpin(appId: string): void { Comp.BarState.unpinApp(appId); }
+        function togglePin(appId: string): void { Comp.BarState.togglePin(appId); }
+    }
 }
