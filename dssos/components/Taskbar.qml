@@ -46,22 +46,63 @@ PanelWindow {
         const live = ToplevelManager.toplevels.values;
         const _entries = DesktopEntries.applications.values.length;
         const map = new Map();
+
+        // 1. Register pinned applications
         for (const id of bar.pinnedIds) {
+            const cleanId = id.toString().replace(/\.desktop$/, "").toLowerCase();
             const pinnedEntry = DesktopEntries.heuristicLookup(id);
-            const k = id.toLowerCase();
-            if (!map.has(k)) map.set(k, { appId: id, entry: pinnedEntry, toplevels: [] });
+            if (!map.has(cleanId)) {
+                map.set(cleanId, { appId: id, entry: pinnedEntry, toplevels: [] });
+            }
         }
-        for (const tl of live) {
+
+        // 2. Helper to resolve window to matching appId
+        function resolveAppId(tl) {
             const raw = (tl.appId ?? "").toString().trim();
-            if (raw === "") continue;
-            const rl = raw.toLowerCase();
             const title = ((tl.title ?? "").toString().trim());
-            const isQs = (rl === "quickshell" || rl === "qs" || rl === "org.quickshell");
-            const key = (isQs && title !== "") ? title : raw;
-            const k = key.toLowerCase();
-            if (!map.has(k)) map.set(k, { appId: key, entry: DesktopEntries.heuristicLookup(key), toplevels: [] });
+            const rl = raw.toLowerCase().replace(/\.desktop$/, "");
+            const isQs = (rl === "quickshell" || rl === "qs" || rl === "org.quickshell" || rl === "");
+
+            if (isQs && title !== "") {
+                const tlTitle = title.toLowerCase();
+                if (tlTitle === "files" || tlTitle.startsWith("files ") || tlTitle.startsWith("files -")) {
+                    return "dssos-files";
+                }
+                if (tlTitle === "tasks" || tlTitle === "task manager") {
+                    return "dssos-tasks";
+                }
+                if (tlTitle === "settings" || tlTitle === "dssos settings") {
+                    return "dssos-settings";
+                }
+            }
+
+            if (rl !== "") {
+                if (map.has(rl)) return rl;
+                const found = DesktopEntries.heuristicLookup(rl);
+                if (found && found.id) {
+                    const foundId = found.id.replace(/\.desktop$/, "").toLowerCase();
+                    if (map.has(foundId)) return foundId;
+                    return foundId;
+                }
+                return rl;
+            }
+
+            return title.toLowerCase();
+        }
+
+        // 3. Group running windows under pinned or dynamically added app slots
+        for (const tl of live) {
+            const targetId = resolveAppId(tl);
+            if (!targetId) continue;
+            const k = targetId.toLowerCase();
+
+            if (!map.has(k)) {
+                const entry = DesktopEntries.heuristicLookup(targetId);
+                map.set(k, { appId: targetId, entry: entry, toplevels: [] });
+            }
             map.get(k).toplevels.push(tl);
         }
+
         return [...map.values()];
     }
 
