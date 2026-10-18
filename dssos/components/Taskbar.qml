@@ -141,17 +141,17 @@ PanelWindow {
 
             // ----------------- Logo Button (.lg)
             Rectangle {
-                Layout.preferredWidth: 44
+                Layout.preferredWidth: 48
                 Layout.preferredHeight: 48
                 color: BarState.startOpen ? bar.cSel : (logoMouse.containsMouse ? bar.cHover : "transparent")
 
                 Image {
                     id: logoImg
                     anchors.centerIn: parent
-                    width: 24
-                    height: 24
-                    sourceSize.width: 48
-                    sourceSize.height: 48
+                    width: 28
+                    height: 28
+                    sourceSize.width: 56
+                    sourceSize.height: 56
                     source: "../assets/logo.png"
                     fillMode: Image.PreserveAspectFit
                     smooth: true
@@ -295,7 +295,7 @@ PanelWindow {
                 id: stBox
                 Layout.preferredHeight: 48
                 Layout.preferredWidth: stRow.implicitWidth + 28
-                color: BarState.quickOpen ? bar.cSel : (stMouse.containsMouse ? bar.cHover : "transparent")
+                color: (BarState.quickOpen && BarState.quickTarget === "status") ? bar.cSel : (stMouse.containsMouse ? bar.cHover : "transparent")
 
                 readonly property color stColor: "#ffffff"
 
@@ -340,9 +340,11 @@ PanelWindow {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        if (BarState.quickOpen) BarState.quickOpen = false;
-                        else {
+                        if (BarState.quickOpen && BarState.quickTarget === "status") {
+                            BarState.quickOpen = false;
+                        } else {
                             BarState.startOpen = false;
+                            BarState.quickTarget = "status";
                             BarState.quickOpen = true;
                         }
                     }
@@ -351,9 +353,10 @@ PanelWindow {
 
             // ----------------- Clock (.tm)
             Rectangle {
+                id: tmBox
                 Layout.preferredHeight: 48
                 Layout.preferredWidth: tmText.implicitWidth + 32
-                color: BarState.quickOpen ? bar.cSel : (tmMouse.containsMouse ? bar.cHover : "transparent")
+                color: (BarState.quickOpen && BarState.quickTarget === "clock") ? bar.cSel : (tmMouse.containsMouse ? bar.cHover : "transparent")
 
                 Text {
                     id: tmText
@@ -369,9 +372,11 @@ PanelWindow {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        if (BarState.quickOpen) BarState.quickOpen = false;
-                        else {
+                        if (BarState.quickOpen && BarState.quickTarget === "clock") {
+                            BarState.quickOpen = false;
+                        } else {
                             BarState.startOpen = false;
+                            BarState.quickTarget = "clock";
                             BarState.quickOpen = true;
                         }
                     }
