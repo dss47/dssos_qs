@@ -56,7 +56,8 @@ Rectangle {
         // hidden. visibleChanged matters as well -- the Item outlives the
         // window inside the shared app host, so a plain binding would never
         // re-arm the timer when the window comes back.
-        running: root.visible        repeat: true
+        running: root.visible
+        repeat: true
         onTriggered: dfProc.running = true
     }
     onVisibleChanged: {
