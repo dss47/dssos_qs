@@ -24,7 +24,10 @@ QtObject {
         im: '<rect x="3" y="5" width="18" height="14"/><circle cx="9" cy="10" r="2"/><path d="M3 17l5-4 4 3 4-4 5 4"/>',
         pd: '<path d="M6 3h8l4 4v14H6zM14 3v4h4"/>',
         cd: '<path d="M9 8l-4 4 4 4M15 8l4 4-4 4"/>',
-        sn: '<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>'
+        sn: '<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>',
+        pl: '<path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3.5c-.5-.5-2.5 0-4 1.5L13.5 8.5 5.3 6.7 4 8l6 4-3 3-2.5-.5L3 16l3.5 1.5L8 21l1.5-1.5-.5-2.5 3-3 4 6 1.8-1.3z"/>',
+        dn: '<path d="M13.73 21a2 2 0 0 1-3.46 0M18.63 13A17.89 17.89 0 0 1 18 8M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14M1 1l22 22"/>',
+        sv: '<rect x="2" y="7" width="18" height="10"/><path d="M22 11v2M11 10v4"/>'
     })
 
     readonly property var _cache: ({})
