@@ -245,7 +245,7 @@ PanelWindow {
                                         const focusedRef = focused;
                                         const appName = (entryRef && entryRef.name) ? entryRef.name : appId;
                                         const isPinned = BarState.isPinned(appId);
-                                        ContextMenuState.showAt(p.x, bar.y, [
+                                        ContextMenuState.show(p.x, bar.barHeight + 6, [
                                             { label: "Open new window", enabled: !!entryRef, action: function() { if (entryRef) entryRef.execute(); } },
                                             { label: "Focus", enabled: winsRef.length > 0, action: function() {
                                                 let cur = -1;
@@ -267,7 +267,7 @@ PanelWindow {
                                             { sep: true },
                                             { label: "Close window", enabled: winsRef.length > 0, action: function() { if (focusedRef) focusedRef.close(); } },
                                             { label: "Close all windows", danger: true, enabled: winsRef.length > 0, action: function() { for (let wi = 0; wi < winsRef.length; wi++) winsRef[wi].close(); } }
-                                        ]);
+                                        ], appName);
                                         return;
                                     }
                                     if (wins.length === 0) {

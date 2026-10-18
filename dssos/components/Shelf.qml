@@ -18,7 +18,7 @@ PanelWindow {
     }
 
     color: "transparent"
-    WlrLayershell.layer: WlrLayer.Overlay
+    WlrLayershell.layer: WlrLayer.Top
     WlrLayershell.keyboardFocus: shelfWin.shelfOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     readonly property bool shelfOpen: BarState.startOpen || BarState.quickOpen
@@ -133,6 +133,7 @@ PanelWindow {
             ShelfLauncher {
                 anchors.fill: parent
                 visible: shelfWin.activePanel === "launcher"
+                winScreen: shelfWin.screen
                 onAppLaunched: (name) => shelfWin.launchByName(name)
                 onActionTriggered: (act) => shelfWin.handleShelfAction(act)
             }

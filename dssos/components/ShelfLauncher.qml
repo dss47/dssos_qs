@@ -7,6 +7,10 @@ import Quickshell.Widgets
 Item {
     id: root
 
+    property var winScreen: null
+    readonly property real screenHeight: (winScreen && winScreen.height > 0) ? winScreen.height : (root.screen ? root.screen.height : 768)
+    readonly property real screenWidth: (winScreen && winScreen.width > 0) ? winScreen.width : (root.screen ? root.screen.width : 1366)
+
     implicitHeight: 250
     clip: true
 
@@ -216,8 +220,8 @@ Item {
                                 onClicked: mouse => {
                                     if (mouse.button === Qt.RightButton) {
                                         const p = riMouse.mapToItem(null, mouse.x, mouse.y);
-                                        const screenH = (root.screen ? root.screen.height : 1080);
-                                        const globalY = screenH - 250 + p.y;
+                                        const screenH = root.screenHeight;
+                                        const globalY = screenH - 48 - 250 + p.y;
                                         const filePath = modelData.path;
                                         const fileName = modelData.name;
 
@@ -356,8 +360,8 @@ Item {
                                     if (mouse.button === Qt.RightButton) {
                                         const isPinned = BarState.isPinned(appId);
                                         const p = giMouse.mapToItem(null, mouse.x, mouse.y);
-                                        const screenH = (root.screen ? root.screen.height : 1080);
-                                        const globalY = screenH - 250 + p.y;
+                                        const screenH = root.screenHeight;
+                                        const globalY = screenH - 48 - 250 + p.y;
 
                                         ContextMenuState.showAt(p.x, globalY, [
                                             {

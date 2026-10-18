@@ -27,7 +27,7 @@ QtObject {
     property var actions: []
 
     function showAt(x, y, model, screenHeight) {
-        var sh = (screenHeight && screenHeight > 0) ? screenHeight : 768;
+        var sh = (screenHeight && screenHeight > 0) ? screenHeight : ((Quickshell.screens && Quickshell.screens.length > 0) ? Quickshell.screens[0].height : 768);
         root.cursorX = x;
         if (y < sh / 2) {
             // Curseur dans la moitié supérieure : ouvre EN-DESSOUS du curseur
