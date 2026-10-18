@@ -58,21 +58,21 @@ Item {
                     text: Qt.formatTime(clock.date, "hh:mm")
                     color: root.cText
                     font.pixelSize: 44
-                    font.weight: Font.Light
-                    lineHeight: 1.1
+                    font.weight: Font.Normal
+                    lineHeight: 1.0
                 }
 
                 Text {
                     text: Qt.formatDate(clock.date, "dddd, d MMMM yyyy")
                     color: root.cMuted
-                    font.pixelSize: 14
+                    font.pixelSize: 13
                 }
 
                 Item { Layout.fillHeight: true }
             }
         }
 
-        // ------------------------------------------------------------- Column 2: Quick Toggles
+        // ------------------------------------------------------------- Column 2: Toggles (Wi-Fi, Bluetooth, Night light)
         Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -103,15 +103,23 @@ Item {
                         anchors.fill: parent
                         spacing: 14
 
-                        DssIcon {
-                            name: "wf"
-                            color: root.cMuted
-                            iconSize: 18
+                        Item {
+                            Layout.preferredWidth: 24
+                            Layout.preferredHeight: 24
+                            Layout.alignment: Qt.AlignVCenter
+
+                            DssIcon {
+                                anchors.centerIn: parent
+                                name: "wf"
+                                color: root.cMuted
+                                iconSize: 18
+                            }
                         }
 
                         ColumnLayout {
                             spacing: 2
                             Layout.fillWidth: true
+                            Layout.alignment: Qt.AlignVCenter
 
                             Text {
                                 text: "Wi-Fi"
@@ -131,6 +139,7 @@ Item {
                         Rectangle {
                             Layout.preferredWidth: 40
                             Layout.preferredHeight: 20
+                            Layout.alignment: Qt.AlignVCenter
                             color: root.wifiActive ? root.cGreen : root.cCtl
                             border.width: 1
                             border.color: root.wifiActive ? root.cGreen : root.cMuted
@@ -138,8 +147,8 @@ Item {
                             Rectangle {
                                 width: 12
                                 height: 12
-                                y: 3
-                                x: root.wifiActive ? 23 : 3
+                                anchors.verticalCenter: parent.verticalCenter
+                                x: root.wifiActive ? (parent.width - width - 4) : 4
                                 color: root.wifiActive ? "#04130a" : root.cMuted
                                 Behavior on x { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
                             }
@@ -163,15 +172,23 @@ Item {
                         anchors.fill: parent
                         spacing: 14
 
-                        DssIcon {
-                            name: "bl"
-                            color: root.cMuted
-                            iconSize: 18
+                        Item {
+                            Layout.preferredWidth: 24
+                            Layout.preferredHeight: 24
+                            Layout.alignment: Qt.AlignVCenter
+
+                            DssIcon {
+                                anchors.centerIn: parent
+                                name: "bl"
+                                color: root.cMuted
+                                iconSize: 18
+                            }
                         }
 
                         ColumnLayout {
                             spacing: 2
                             Layout.fillWidth: true
+                            Layout.alignment: Qt.AlignVCenter
 
                             Text {
                                 text: "Bluetooth"
@@ -191,6 +208,7 @@ Item {
                         Rectangle {
                             Layout.preferredWidth: 40
                             Layout.preferredHeight: 20
+                            Layout.alignment: Qt.AlignVCenter
                             color: root.btActive ? root.cGreen : root.cCtl
                             border.width: 1
                             border.color: root.btActive ? root.cGreen : root.cMuted
@@ -198,8 +216,8 @@ Item {
                             Rectangle {
                                 width: 12
                                 height: 12
-                                y: 3
-                                x: root.btActive ? 23 : 3
+                                anchors.verticalCenter: parent.verticalCenter
+                                x: root.btActive ? (parent.width - width - 4) : 4
                                 color: root.btActive ? "#04130a" : root.cMuted
                                 Behavior on x { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
                             }
@@ -223,15 +241,23 @@ Item {
                         anchors.fill: parent
                         spacing: 14
 
-                        DssIcon {
-                            name: "mn"
-                            color: root.cMuted
-                            iconSize: 18
+                        Item {
+                            Layout.preferredWidth: 24
+                            Layout.preferredHeight: 24
+                            Layout.alignment: Qt.AlignVCenter
+
+                            DssIcon {
+                                anchors.centerIn: parent
+                                name: "mn"
+                                color: root.cMuted
+                                iconSize: 18
+                            }
                         }
 
                         ColumnLayout {
                             spacing: 2
                             Layout.fillWidth: true
+                            Layout.alignment: Qt.AlignVCenter
 
                             Text {
                                 text: "Night light"
@@ -251,6 +277,7 @@ Item {
                         Rectangle {
                             Layout.preferredWidth: 40
                             Layout.preferredHeight: 20
+                            Layout.alignment: Qt.AlignVCenter
                             color: root.nightActive ? root.cGreen : root.cCtl
                             border.width: 1
                             border.color: root.nightActive ? root.cGreen : root.cMuted
@@ -258,8 +285,8 @@ Item {
                             Rectangle {
                                 width: 12
                                 height: 12
-                                y: 3
-                                x: root.nightActive ? 23 : 3
+                                anchors.verticalCenter: parent.verticalCenter
+                                x: root.nightActive ? (parent.width - width - 4) : 4
                                 color: root.nightActive ? "#04130a" : root.cMuted
                                 Behavior on x { NumberAnimation { duration: 150; easing.type: Easing.OutQuad } }
                             }
@@ -298,16 +325,24 @@ Item {
                         anchors.fill: parent
                         spacing: 14
 
-                        DssIcon {
-                            name: "sn"
-                            color: root.cMuted
-                            iconSize: 18
+                        Item {
+                            Layout.preferredWidth: 24
+                            Layout.preferredHeight: 24
+                            Layout.alignment: Qt.AlignVCenter
+
+                            DssIcon {
+                                anchors.centerIn: parent
+                                name: "sn"
+                                color: root.cMuted
+                                iconSize: 18
+                            }
                         }
 
                         Item {
                             id: bTrack
                             Layout.fillWidth: true
                             Layout.preferredHeight: 4
+                            Layout.alignment: Qt.AlignVCenter
 
                             Rectangle {
                                 anchors.fill: parent
@@ -325,7 +360,7 @@ Item {
                             Rectangle {
                                 width: 10
                                 height: 16
-                                y: -6
+                                anchors.verticalCenter: parent.verticalCenter
                                 x: (bTrack.width * root.brightnessVal) - 5
                                 color: root.cGreen
                             }
@@ -350,7 +385,8 @@ Item {
                             text: Math.round(root.brightnessVal * 100) + "%"
                             color: root.cMuted
                             font.pixelSize: 13
-                            Layout.preferredWidth: 36
+                            Layout.preferredWidth: 40
+                            Layout.alignment: Qt.AlignVCenter
                             horizontalAlignment: Text.AlignRight
                         }
                     }
@@ -366,16 +402,24 @@ Item {
                         anchors.fill: parent
                         spacing: 14
 
-                        DssIcon {
-                            name: "vl"
-                            color: root.cMuted
-                            iconSize: 18
+                        Item {
+                            Layout.preferredWidth: 24
+                            Layout.preferredHeight: 24
+                            Layout.alignment: Qt.AlignVCenter
+
+                            DssIcon {
+                                anchors.centerIn: parent
+                                name: "vl"
+                                color: root.cMuted
+                                iconSize: 18
+                            }
                         }
 
                         Item {
                             id: vTrack
                             Layout.fillWidth: true
                             Layout.preferredHeight: 4
+                            Layout.alignment: Qt.AlignVCenter
 
                             Rectangle {
                                 anchors.fill: parent
@@ -393,7 +437,7 @@ Item {
                             Rectangle {
                                 width: 10
                                 height: 16
-                                y: -6
+                                anchors.verticalCenter: parent.verticalCenter
                                 x: (vTrack.width * root.volumeVal) - 5
                                 color: root.cGreen
                             }
@@ -418,7 +462,8 @@ Item {
                             text: Math.round(root.volumeVal * 100) + "%"
                             color: root.cMuted
                             font.pixelSize: 13
-                            Layout.preferredWidth: 36
+                            Layout.preferredWidth: 40
+                            Layout.alignment: Qt.AlignVCenter
                             horizontalAlignment: Text.AlignRight
                         }
                     }
@@ -434,15 +479,23 @@ Item {
                         anchors.fill: parent
                         spacing: 14
 
-                        DssIcon {
-                            name: "bt"
-                            color: root.cMuted
-                            iconSize: 18
+                        Item {
+                            Layout.preferredWidth: 24
+                            Layout.preferredHeight: 24
+                            Layout.alignment: Qt.AlignVCenter
+
+                            DssIcon {
+                                anchors.centerIn: parent
+                                name: "bt"
+                                color: root.cMuted
+                                iconSize: 18
+                            }
                         }
 
                         RowLayout {
                             spacing: 8
                             Layout.fillWidth: true
+                            Layout.alignment: Qt.AlignVCenter
 
                             Text {
                                 text: "84%"

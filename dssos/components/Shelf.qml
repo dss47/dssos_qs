@@ -18,34 +18,24 @@ PanelWindow {
     }
 
     color: "transparent"
-    WlrLayershell.layer: WlrLayer.Top
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
+    WlrLayershell.layer: WlrLayer.Overlay
+    WlrLayershell.keyboardFocus: shelfWin.shelfOpen ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     readonly property bool shelfOpen: BarState.startOpen || BarState.quickOpen
-    property bool shelfVisible: false
     readonly property real shelfHeight: 250
 
     implicitHeight: shelfHeight
     exclusiveZone: 0
-    visible: shelfVisible
+    visible: true
+    mask: shelfWin.shelfOpen ? openMask : closedMask
 
-    Timer {
-        id: closeTimer
-        interval: 170
-        onTriggered: {
-            if (!shelfWin.shelfOpen) {
-                shelfWin.shelfVisible = false;
-            }
-        }
-    }
+    Region { id: openMask; item: shelfContent }
+    Region { id: closedMask; width: 0; height: 0 }
 
-    onShelfOpenChanged: {
-        if (shelfOpen) {
-            closeTimer.stop();
-            shelfVisible = true;
-        } else {
-            closeTimer.start();
-        }
+    OutsideClick {
+        targetLayer: WlrLayer.Top
+        visible: shelfWin.shelfOpen
+        onClicked: shelfWin.closeShelf()
     }
 
     function closeShelf() {
@@ -92,11 +82,9 @@ PanelWindow {
             border.width: 1
             border.color: "#1c1c1c"
 
-            // GPU Layering: caches subtree to GPU texture during motion
             layer.enabled: true
             layer.smooth: true
 
-            // GPU-accelerated vertex translation: 0ms CPU layout cost
             transform: Translate {
                 y: shelfWin.shelfOpen ? 0 : shelfWin.shelfHeight
                 Behavior on y {
