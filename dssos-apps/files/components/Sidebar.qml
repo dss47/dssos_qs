@@ -8,6 +8,7 @@ Rectangle {
 
     property string currentPath: ""
     signal locationSelected(string path)
+    signal contextMenuRequested(real globalX, real globalY, var item)
 
     width: Theme.sidebarWidth
     implicitWidth: Theme.sidebarWidth
@@ -151,9 +152,15 @@ Rectangle {
                                 anchors.fill: parent
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    if (modelData.path) Paths.ensureDirectory(modelData.path);
-                                    root.locationSelected(modelData.path);
+                                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                                onClicked: (mouse) => {
+                                    if (mouse.button === Qt.LeftButton) {
+                                        if (modelData.path) Paths.ensureDirectory(modelData.path);
+                                        root.locationSelected(modelData.path);
+                                    } else if (mouse.button === Qt.RightButton) {
+                                        var pt = mapToItem(null, mouse.x, mouse.y);
+                                        root.contextMenuRequested(pt.x, pt.y, modelData);
+                                    }
                                 }
                             }
                         }

@@ -50,6 +50,14 @@ Window {
 
     property var selectedItem: null
     property int selectedIndex: -1
+    property var selectedIndices: []
+
+    function clearSelection(): void {
+        win.allSelected = false;
+        win.selectedIndices = [];
+        win.selectedIndex = -1;
+        win.selectedItem = null;
+    }
 
     // Wayfire repaint workaround.
     //
@@ -314,6 +322,9 @@ Window {
     function selectAll() {
         if (folderModel.count > 0) {
             win.allSelected = true;
+            var arr = [];
+            for (var i = 0; i < folderModel.count; ++i) arr.push(i);
+            win.selectedIndices = arr;
             win.selectedIndex = 0;
             if (win.isGrid) win.selectedItem = fileGridView.getItem(0);
             else win.selectedItem = fileListView.getItem(0);
@@ -321,16 +332,57 @@ Window {
         }
     }
 
-    // What the next Ctrl+C / Ctrl+X acts on: everything when Ctrl+A is active,
-    // otherwise just the active row. Returns absolute paths because that is what
-    // both the clipboard and the shell scripts take.
+    function handleItemClicked(index, info, isCtrl) {
+        if (isCtrl) {
+            win.allSelected = false;
+            var list = win.selectedIndices.slice();
+            var existingIdx = list.indexOf(index);
+            if (existingIdx !== -1) {
+                list.splice(existingIdx, 1);
+                win.selectedIndices = list;
+                if (list.length > 0) {
+                    var last = list[list.length - 1];
+                    win.selectedIndex = last;
+                    win.selectedItem = win.isGrid ? fileGridView.getItem(last) : fileListView.getItem(last);
+                } else {
+                    win.selectedIndex = -1;
+                    win.selectedItem = null;
+                }
+            } else {
+                list.push(index);
+                win.selectedIndices = list;
+                win.selectedIndex = index;
+                win.selectedItem = info;
+            }
+            if (win.selectedIndices.length > 1) {
+                win.notify(win.selectedIndices.length + " items selected");
+            }
+        } else {
+            win.allSelected = false;
+            win.selectedIndices = [index];
+            win.selectedIndex = index;
+            win.selectedItem = info;
+        }
+    }
+
     function selectedPaths() {
-        if (isTrash) return [];
         const out = [];
         if (allSelected) {
             for (let i = 0; i < folderModel.count; ++i) {
                 const p = folderModel.get(i, "filePath") || "";
                 if (p !== "") out.push(p);
+            }
+            return out;
+        }
+        if (selectedIndices && selectedIndices.length > 1) {
+            for (let i = 0; i < selectedIndices.length; ++i) {
+                const idx = selectedIndices[i];
+                const item = win.isGrid ? fileGridView.getItem(idx) : fileListView.getItem(idx);
+                if (item && item.path) out.push(item.path);
+                else {
+                    const p = folderModel.get(idx, "filePath") || "";
+                    if (p !== "") out.push(p);
+                }
             }
             return out;
         }
@@ -443,8 +495,12 @@ Window {
     }
 
     function restoreSelectionFromTrash() {
-        if (!selectedItem) return;
-        fileOps.restoreTrash(selectedItem.path);
+        const srcs = win.selectedPaths();
+        if (srcs.length === 0) {
+            if (selectedItem && selectedItem.path) fileOps.restoreTrash(selectedItem.path);
+            return;
+        }
+        fileOps.restoreTrash(srcs);
     }
 
     function emptyTrash() {
@@ -541,16 +597,14 @@ Window {
         win.history = win.history.concat([clean]);
         win.historyIndex = win.history.length - 1;
         win.currentPath = clean;
-        win.selectedIndex = -1;
-        win.selectedItem = null;
+        win.clearSelection();
     }
 
     function goBack(): void {
         if (win.historyIndex > 0) {
             win.historyIndex--;
             win.currentPath = win.history[win.historyIndex];
-            win.selectedIndex = -1;
-            win.selectedItem = null;
+            win.clearSelection();
         }
     }
 
@@ -558,8 +612,7 @@ Window {
         if (win.historyIndex < win.history.length - 1) {
             win.historyIndex++;
             win.currentPath = win.history[win.historyIndex];
-            win.selectedIndex = -1;
-            win.selectedItem = null;
+            win.clearSelection();
         }
     }
 
@@ -609,102 +662,183 @@ Window {
                 Layout.fillHeight: true
                 currentPath: win.currentPath
                 onLocationSelected: path => win.navigateTo(path)
+                onContextMenuRequested: (gx, gy, item) => win.showSidebarContextMenu(gx, gy, item)
             }
 
             // Vue Principale (Liste ou Grille)
-            // Sorting lives in the list's column headers (Windows style), so
-            // there is no separate sort bar. Grid view has no headers and
-            // inherits whatever sort the list last used.
-            Item {
+            ColumnLayout {
                 id: mainArea
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                spacing: 0
 
-                        FileList {
-                            id: fileListView
-                            anchors.fill: parent
-                            visible: !win.isGrid
-                            model: folderModel
-                            selectedIndex: win.selectedIndex
-                            searchQuery: toolbar.searchQuery
-                            sortField: win.sortField
-                            sortAscending: win.sortAscending
-                            onSortFieldSelected: (f) => win.setSortField(f)
-                            onSortOrderToggled: win.toggleSortOrder()
-                            onFileActivated: (index, path, isDir) => {
-                                if (win.isTrash) {
-                                    win.restoreSelectionFromTrash();
-                                    return;
-                                }
-                                if (isDir) win.navigateTo(path);
-                                else win.openFile(path);
-                            }
-                            allSelected: win.allSelected
-                            onSelectionChanged: (index, info) => {
-                                win.allSelected = false;
-                                win.selectedIndex = index;
-                                win.selectedItem = info;
-                            }
-                            isTrash: win.isTrash
-                            renaming: win.renaming
-                            renameValue: win.renameValue
-                            onRenameCommitted: (n) => win.commitRename(n)
-                            onRenameCancelled: () => win.cancelRename()
-                            onSelectAllRequested: win.selectAll()
-                            onCopyRequested: win.copySelection()
-                            onCutRequested: win.cutSelection()
-                            onPasteRequested: win.paste()
-                            onUndoRequested: win.undo()
-                            onGoUpRequested: win.goUp()
-                            onGoBackRequested: win.goBack()
-                            onGoForwardRequested: win.goForward()
-                            onRenameRequested: win.beginRename()
-                            onDeleteRequested: (perm) => { if (perm || win.isTrash) win.requestPermanentDelete(); else win.moveSelectionToTrash(); }
-                            onNewFolderRequested: win.newFolder()
-                            onContextMenuRequested: (gx, gy, info) => win.showItemContextMenu(gx, gy, info)
-                            onEmptySpaceContextMenuRequested: (gx, gy) => win.showEmptyContextMenu(gx, gy)
+                // Trash Action Banner (visible inside Trash)
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 34
+                    color: "#161616"
+                    visible: win.isTrash
+
+                    Rectangle {
+                        anchors.bottom: parent.bottom
+                        width: parent.width
+                        height: 1
+                        color: Theme.divider
+                    }
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 16
+                        anchors.rightMargin: 16
+                        spacing: 12
+
+                        Image {
+                            sourceSize: Qt.size(16, 16)
+                            source: Quickshell.iconPath("user-trash", "trash-empty")
+                            Layout.alignment: Qt.AlignVCenter
                         }
 
-                        FileGrid {
-                            id: fileGridView
-                            anchors.fill: parent
-                            visible: win.isGrid
-                            model: folderModel
-                            selectedIndex: win.selectedIndex
-                            allSelected: win.allSelected
-                            onSelectionChanged: (index, info) => {
+                        Text {
+                            text: "Trash \u2014 Items will be permanently erased when emptied"
+                            color: Theme.muted
+                            font.pixelSize: Theme.fontSizeSmall
+                            font.family: Theme.fontFamily
+                            Layout.alignment: Qt.AlignVCenter
+                            Layout.fillWidth: true
+                            elide: Text.ElideRight
+                        }
+
+                        Rectangle {
+                            Layout.preferredHeight: 24
+                            Layout.preferredWidth: emptyTrashLabel.implicitWidth + 20
+                            color: emptyTrashBtnMouse.containsMouse ? "#331616" : "#241414"
+                            border.width: 1
+                            border.color: emptyTrashBtnMouse.containsMouse ? "#ff5555" : "#662222"
+
+                            Text {
+                                id: emptyTrashLabel
+                                anchors.centerIn: parent
+                                text: "Empty Trash"
+                                color: "#ff6666"
+                                font.pixelSize: Theme.fontSizeSmall
+                                font.family: Theme.fontFamily
+                                font.weight: Font.DemiBold
+                            }
+
+                            MouseArea {
+                                id: emptyTrashBtnMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: win.emptyTrash()
+                            }
+                        }
+                    }
+                }
+
+                Item {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+
+                    FileList {
+                        id: fileListView
+                        anchors.fill: parent
+                        visible: !win.isGrid
+                        model: folderModel
+                        selectedIndex: win.selectedIndex
+                        selectedIndices: win.selectedIndices
+                        onItemClicked: (index, info, ctrl) => win.handleItemClicked(index, info, ctrl)
+                        searchQuery: toolbar.searchQuery
+                        sortField: win.sortField
+                        sortAscending: win.sortAscending
+                        onSortFieldSelected: (f) => win.setSortField(f)
+                        onSortOrderToggled: win.toggleSortOrder()
+                        onFileActivated: (index, path, isDir) => {
+                            if (win.isTrash) {
+                                win.restoreSelectionFromTrash();
+                                return;
+                            }
+                            if (isDir) win.navigateTo(path);
+                            else win.openFile(path);
+                        }
+                        allSelected: win.allSelected
+                        onSelectionChanged: (index, info) => {
+                            if (index === -1) {
+                                win.clearSelection();
+                            } else {
                                 win.allSelected = false;
                                 win.selectedIndex = index;
+                                win.selectedIndices = [index];
                                 win.selectedItem = info;
                             }
-                            searchQuery: toolbar.searchQuery
-                            isTrash: win.isTrash
-                            renaming: win.renaming
-                            renameValue: win.renameValue
-                            onRenameCommitted: (n) => win.commitRename(n)
-                            onRenameCancelled: () => win.cancelRename()
-                            onSelectAllRequested: win.selectAll()
-                            onCopyRequested: win.copySelection()
-                            onCutRequested: win.cutSelection()
-                            onPasteRequested: win.paste()
-                            onUndoRequested: win.undo()
-                            onGoUpRequested: win.goUp()
-                            onGoBackRequested: win.goBack()
-                            onGoForwardRequested: win.goForward()
-                            onRenameRequested: win.beginRename()
-                            onDeleteRequested: (perm) => { if (perm || win.isTrash) win.requestPermanentDelete(); else win.moveSelectionToTrash(); }
-                            onNewFolderRequested: win.newFolder()
-                            onFileActivated: (index, path, isDir) => {
-                                if (win.isTrash) {
-                                    win.restoreSelectionFromTrash();
-                                    return;
-                                }
-                                if (isDir) win.navigateTo(path);
-                                else win.openFile(path);
-                            }
-                            onContextMenuRequested: (gx, gy, info) => win.showItemContextMenu(gx, gy, info)
-                            onEmptySpaceContextMenuRequested: (gx, gy) => win.showEmptyContextMenu(gx, gy)
                         }
+                        isTrash: win.isTrash
+                        renaming: win.renaming
+                        renameValue: win.renameValue
+                        onRenameCommitted: (n) => win.commitRename(n)
+                        onRenameCancelled: () => win.cancelRename()
+                        onSelectAllRequested: win.selectAll()
+                        onCopyRequested: win.copySelection()
+                        onCutRequested: win.cutSelection()
+                        onPasteRequested: win.paste()
+                        onUndoRequested: win.undo()
+                        onGoUpRequested: win.goUp()
+                        onGoBackRequested: win.goBack()
+                        onGoForwardRequested: win.goForward()
+                        onRenameRequested: win.beginRename()
+                        onDeleteRequested: (perm) => { if (perm || win.isTrash) win.requestPermanentDelete(); else win.moveSelectionToTrash(); }
+                        onNewFolderRequested: win.newFolder()
+                        onContextMenuRequested: (gx, gy, info) => win.showItemContextMenu(gx, gy, info)
+                        onEmptySpaceContextMenuRequested: (gx, gy) => { win.clearSelection(); win.showEmptyContextMenu(gx, gy); }
+                    }
+
+                    FileGrid {
+                        id: fileGridView
+                        anchors.fill: parent
+                        visible: win.isGrid
+                        model: folderModel
+                        selectedIndex: win.selectedIndex
+                        selectedIndices: win.selectedIndices
+                        onItemClicked: (index, info, ctrl) => win.handleItemClicked(index, info, ctrl)
+                        allSelected: win.allSelected
+                        onSelectionChanged: (index, info) => {
+                            if (index === -1) {
+                                win.clearSelection();
+                            } else {
+                                win.allSelected = false;
+                                win.selectedIndex = index;
+                                win.selectedIndices = [index];
+                                win.selectedItem = info;
+                            }
+                        }
+                        searchQuery: toolbar.searchQuery
+                        isTrash: win.isTrash
+                        renaming: win.renaming
+                        renameValue: win.renameValue
+                        onRenameCommitted: (n) => win.commitRename(n)
+                        onRenameCancelled: () => win.cancelRename()
+                        onSelectAllRequested: win.selectAll()
+                        onCopyRequested: win.copySelection()
+                        onCutRequested: win.cutSelection()
+                        onPasteRequested: win.paste()
+                        onUndoRequested: win.undo()
+                        onGoUpRequested: win.goUp()
+                        onGoBackRequested: win.goBack()
+                        onGoForwardRequested: win.goForward()
+                        onRenameRequested: win.beginRename()
+                        onDeleteRequested: (perm) => { if (perm || win.isTrash) win.requestPermanentDelete(); else win.moveSelectionToTrash(); }
+                        onNewFolderRequested: win.newFolder()
+                        onFileActivated: (index, path, isDir) => {
+                            if (win.isTrash) {
+                                win.restoreSelectionFromTrash();
+                                return;
+                            }
+                            if (isDir) win.navigateTo(path);
+                            else win.openFile(path);
+                        }
+                        onContextMenuRequested: (gx, gy, info) => win.showItemContextMenu(gx, gy, info)
+                        onEmptySpaceContextMenuRequested: (gx, gy) => { win.clearSelection(); win.showEmptyContextMenu(gx, gy); }
+                    }
 
                         // Confirmation dialog for irreversible delete (Shift+Delete).
                         Rectangle {
@@ -888,6 +1022,13 @@ Window {
                 },
                 { separator: true },
                 {
+                    label: "Empty Trash",
+                    action: function() {
+                        win.emptyTrash();
+                    }
+                },
+                { separator: true },
+                {
                     label: "Properties",
                     enabled: !win.showPreview,
                     action: function() {
@@ -1014,6 +1155,53 @@ Window {
                 }
             }
         ]);
+    }
+
+    function showSidebarContextMenu(gx, gy, item) {
+        if (!item) return;
+        const isTrashItem = item.name === "Trash" || (item.path && item.path.indexOf("Trash") !== -1);
+        if (isTrashItem) {
+            ctxMenu.popup(gx, gy, [
+                {
+                    label: "Open",
+                    action: function() {
+                        win.navigateTo(item.path);
+                    }
+                },
+                { separator: true },
+                {
+                    label: "Empty Trash",
+                    action: function() {
+                        win.emptyTrash();
+                    }
+                }
+            ]);
+        } else {
+            ctxMenu.popup(gx, gy, [
+                {
+                    label: "Open",
+                    action: function() {
+                        if (item.path) Paths.ensureDirectory(item.path);
+                        win.navigateTo(item.path);
+                    }
+                },
+                {
+                    label: "Open in new window",
+                    action: function() {
+                        if (item.path) Paths.ensureDirectory(item.path);
+                        Quickshell.execDetached(["dssos-app", "files", item.path]);
+                    }
+                },
+                { separator: true },
+                {
+                    label: "Open in terminal",
+                    action: function() {
+                        if (item.path) Paths.ensureDirectory(item.path);
+                        Quickshell.execDetached(["foot", "--working-directory=" + item.path]);
+                    }
+                }
+            ]);
+        }
     }
 
     function handleOutsideRightClick(gx, gy) {

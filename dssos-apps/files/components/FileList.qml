@@ -17,6 +17,8 @@ Item {
 
     signal fileActivated(int index, string filePath, bool isDir)
     signal selectionChanged(int index, var fileInfo)
+    signal itemClicked(int index, var fileInfo, bool isCtrl)
+    property var selectedIndices: []
     signal sortFieldSelected(string field)
     signal sortOrderToggled()
     signal contextMenuRequested(real globalX, real globalY, var fileInfo)
@@ -316,7 +318,9 @@ Item {
                     value: 0
                 }
 
-                readonly property bool isSelected: root.allSelected || index === root.selectedIndex
+                readonly property bool isSelected: root.allSelected ||
+                                                   (root.selectedIndices && root.selectedIndices.indexOf(index) !== -1) ||
+                                                   (root.selectedIndices.length <= 1 && index === root.selectedIndex)
                 readonly property bool isRenamingThis: root.renaming && (index === root.selectedIndex)
                 color: isSelected ? Theme.selected : (rowMouse.containsMouse ? Theme.rowHover : "transparent")
 
@@ -471,8 +475,10 @@ Item {
                                 modified: root.formatModified(model.fileModified),
                                 type: root.formatType(model.fileName, model.fileIsDir)
                             };
-                            root.selectedIndex = index;
-                            root.selectionChanged(index, info);
+                            var alreadySelected = root.selectedIndices && root.selectedIndices.indexOf(index) !== -1;
+                            if (!alreadySelected) {
+                                root.itemClicked(index, info, false);
+                            }
                             var pt = mapToItem(null, mouse.x, mouse.y);
                             root.contextMenuRequested(pt.x, pt.y, info);
                         }
@@ -488,8 +494,8 @@ Item {
                                 modified: root.formatModified(model.fileModified),
                                 type: root.formatType(model.fileName, model.fileIsDir)
                             };
-                            root.selectedIndex = index;
-                            root.selectionChanged(index, info);
+                            var isCtrl = (mouse.modifiers & Qt.ControlModifier) !== 0;
+                            root.itemClicked(index, info, isCtrl);
                         }
                     }
 
