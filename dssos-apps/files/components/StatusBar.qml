@@ -50,10 +50,18 @@ Rectangle {
     }
 
     Timer {
+        id: dfTimer
         interval: 15000
-        running: true
-        repeat: true
+        // Same reasoning as dfProc: no polling while the Files window is
+        // hidden. visibleChanged matters as well -- the Item outlives the
+        // window inside the shared app host, so a plain binding would never
+        // re-arm the timer when the window comes back.
+        running: root.visible        repeat: true
         onTriggered: dfProc.running = true
+    }
+    onVisibleChanged: {
+        dfTimer.running = visible;
+        if (visible) dfProc.running = true;
     }
 
     RowLayout {

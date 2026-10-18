@@ -56,8 +56,13 @@ Window {
     property bool uiReady: false
     Component.onCompleted: {
         uiReady = true;
-        overviewProc.running = true;
-        snapshotProc.running = true;
+        // callLater, like every other hand-started Process: assigning .running
+        // in the same tick as .command is evaluated starts the child before the
+        // command list is resolved, and the process comes up empty.
+        Qt.callLater(function() {
+            overviewProc.running = true;
+            snapshotProc.running = true;
+        });
     }
     onWidthChanged: if (uiReady) repaintDebounce.restart()
     onHeightChanged: if (uiReady) repaintDebounce.restart()
