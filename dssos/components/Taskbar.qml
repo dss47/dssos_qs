@@ -161,7 +161,7 @@ PanelWindow {
 
                     Behavior on x {
                         NumberAnimation {
-                            duration: 200
+                            duration: 140
                             easing.type: Easing.OutQuad
                         }
                     }

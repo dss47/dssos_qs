@@ -12,7 +12,7 @@ PanelWindow {
     }
 
     margins {
-        bottom: 40
+        bottom: 0
         left: 0
         right: 0
     }
@@ -31,7 +31,7 @@ PanelWindow {
 
     Timer {
         id: closeTimer
-        interval: 250
+        interval: 170
         onTriggered: {
             if (!shelfWin.shelfOpen) {
                 shelfWin.shelfVisible = false;
@@ -87,20 +87,23 @@ PanelWindow {
 
         Rectangle {
             id: shelfContent
-            anchors.left: parent.left
-            anchors.right: parent.right
-            height: shelfWin.shelfHeight
+            anchors.fill: parent
             color: "#050505"
             border.width: 1
             border.color: "#1c1c1c"
 
-            // Physical slide up: starts at shelfHeight (clipped below window bottom), slides up to 0
-            y: shelfWin.shelfOpen ? 0 : shelfWin.shelfHeight
+            // GPU Layering: caches subtree to GPU texture during motion
+            layer.enabled: true
+            layer.smooth: true
 
-            Behavior on y {
-                NumberAnimation {
-                    duration: 240
-                    easing.type: Easing.OutCubic
+            // GPU-accelerated vertex translation: 0ms CPU layout cost
+            transform: Translate {
+                y: shelfWin.shelfOpen ? 0 : shelfWin.shelfHeight
+                Behavior on y {
+                    NumberAnimation {
+                        duration: 160
+                        easing.type: Easing.OutQuad
+                    }
                 }
             }
 
@@ -108,8 +111,6 @@ PanelWindow {
             ShelfLauncher {
                 anchors.fill: parent
                 visible: BarState.startOpen
-                opacity: visible ? 1.0 : 0.0
-                Behavior on opacity { NumberAnimation { duration: 150 } }
                 onAppLaunched: (name) => shelfWin.launchByName(name)
                 onActionTriggered: (act) => shelfWin.handleShelfAction(act)
             }
@@ -118,8 +119,6 @@ PanelWindow {
             ShelfControl {
                 anchors.fill: parent
                 visible: BarState.quickOpen
-                opacity: visible ? 1.0 : 0.0
-                Behavior on opacity { NumberAnimation { duration: 150 } }
             }
         }
     }
