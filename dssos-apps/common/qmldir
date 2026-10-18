@@ -17,4 +17,5 @@ DssRadio 1.0 DssRadio.qml
 DssRailButton 1.0 DssRailButton.qml
 DssSidebarItem 1.0 DssSidebarItem.qml
 DssContextMenu 1.0 DssContextMenu.qml
+DssDialog 1.0 DssDialog.qml
 singleton DssPaths DssPaths.qml

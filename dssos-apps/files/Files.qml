@@ -504,7 +504,7 @@ Window {
     }
 
     function emptyTrash() {
-        fileOps.emptyTrash();
+        emptyTrashDialog.open = true;
     }
 
     function beginRename() {
@@ -839,74 +839,8 @@ Window {
                         onContextMenuRequested: (gx, gy, info) => win.showItemContextMenu(gx, gy, info)
                         onEmptySpaceContextMenuRequested: (gx, gy) => { win.clearSelection(); win.showEmptyContextMenu(gx, gy); }
                     }
-
-                        // Confirmation dialog for irreversible delete (Shift+Delete).
-                        Rectangle {
-                            anchors.fill: parent
-                            color: "#99000000"
-                            visible: win.confirmDelete
-
-                            MouseArea {
-                                anchors.fill: parent
-                                onClicked: win.confirmDelete = false
-                            }
-
-                            Rectangle {
-                                anchors.centerIn: parent
-                                width: 420
-                                height: 132
-                                color: Theme.card
-                                border.width: 1
-                                border.color: Theme.danger
-
-                                Text {
-                                    id: delTitle
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 18
-                                    anchors.top: parent.top
-                                    anchors.topMargin: 16
-                                    text: "Delete permanently?"
-                                    color: Theme.text
-                                    font.pixelSize: Theme.fontSizeTitle
-                                    font.family: Theme.fontFamily
-                                }
-
-                                Text {
-                                    anchors.left: delTitle.left
-                                    anchors.right: parent.right
-                                    anchors.rightMargin: 18
-                                    anchors.top: delTitle.bottom
-                                    anchors.topMargin: 6
-                                    text: "This cannot be undone. Use plain Delete to move "
-                                          + "items to Trash instead."
-                                    color: Theme.muted
-                                    font.pixelSize: Theme.fontSizeSmall
-                                    font.family: Theme.fontFamily
-                                    wrapMode: Text.WordWrap
-                                }
-
-                                RowLayout {
-                                    anchors.right: parent.right
-                                    anchors.rightMargin: 18
-                                    anchors.bottom: parent.bottom
-                                    anchors.bottomMargin: 16
-                                    spacing: 10
-
-                                    DssButton {
-                                        text: "Cancel"
-                                        variant: "ghost"
-                                        onClicked: win.confirmDelete = false
-                                    }
-                                    DssButton {
-                                        text: "Delete"
-                                        variant: "danger"
-                                        onClicked: win.confirmPermanentDelete()
-                                    }
-                                }
-                            }
-                        }
-                    }
                 }
+            }
 
             // Volet d'aperçu droit (230px)
             Preview {
@@ -980,8 +914,9 @@ Window {
     Shortcut {
         sequence: "Escape"
         onActivated: {
-            if (win.renaming) win.cancelRename();
+            if (emptyTrashDialog.open) emptyTrashDialog.reject();
             else if (win.confirmDelete) win.confirmDelete = false;
+            else if (win.renaming) win.cancelRename();
         }
     }
 
@@ -1231,5 +1166,25 @@ Window {
     DssContextMenu {
         id: ctxMenu
         onRightClickedOutside: (gx, gy) => win.handleOutsideRightClick(gx, gy)
+    }
+
+    DssDialog {
+        id: confirmDeleteDialog
+        title: "Delete permanently?"
+        message: "This cannot be undone. Use plain Delete to move items to Trash instead."
+        confirmText: "Delete"
+        confirmVariant: "danger"
+        open: win.confirmDelete
+        onConfirmed: win.confirmPermanentDelete()
+        onCancelled: win.confirmDelete = false
+    }
+
+    DssDialog {
+        id: emptyTrashDialog
+        title: "Empty Trash?"
+        message: "All items in the Trash will be permanently erased. This action cannot be undone."
+        confirmText: "Empty Trash"
+        confirmVariant: "danger"
+        onConfirmed: fileOps.emptyTrash()
     }
 }
