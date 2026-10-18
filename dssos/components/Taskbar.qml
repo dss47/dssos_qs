@@ -36,7 +36,7 @@ PanelWindow {
 
     Timer {
         id: closeTimer
-        interval: 220
+        interval: 260
         onTriggered: {
             if (!bar.shelfOpen) {
                 bar.shelfVisible = false;
@@ -147,42 +147,38 @@ PanelWindow {
         else if (act === "Shut down") Quickshell.execDetached(["systemctl", "poweroff"]);
     }
 
-    ColumnLayout {
+    Item {
         anchors.fill: parent
-        spacing: 0
 
-        // ============================================================= 1. THE SHELF (rises into view)
-        Rectangle {
+        // ============================================================= 1. THE SHELF (slides up from behind taskbar)
+        Item {
             id: shelfBox
-            Layout.fillWidth: true
-            Layout.preferredHeight: bar.shelfOpen ? bar.shelfHeight : 0
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: taskbarRow.top
+            height: bar.shelfHeight
             clip: true
-            color: bar.cShelf
-            border.width: bar.shelfOpen ? 1 : 0
-            border.color: bar.cBorder
+            visible: bar.shelfVisible
+            z: 1
 
-            Behavior on Layout.preferredHeight {
-                NumberAnimation {
-                    duration: 220
-                    easing.type: Easing.OutCubic
-                }
-            }
-
-            Item {
+            Rectangle {
                 id: shelfContent
                 anchors.left: parent.left
                 anchors.right: parent.right
-                anchors.bottom: parent.bottom
                 height: bar.shelfHeight
-                transform: Translate {
-                    y: bar.shelfOpen ? 0 : 35
-                    Behavior on y {
-                        NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
+                color: bar.cShelf
+                border.width: 1
+                border.color: bar.cBorder
+
+                // Slide animation: when closed, y is shelfHeight (pushed below the clip boundary);
+                // when open, y is 0 (rises into full view).
+                y: bar.shelfOpen ? 0 : bar.shelfHeight
+
+                Behavior on y {
+                    NumberAnimation {
+                        duration: 240
+                        easing.type: Easing.OutCubic
                     }
-                }
-                opacity: bar.shelfOpen ? 1.0 : 0.0
-                Behavior on opacity {
-                    NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
                 }
 
                 // Shelf 1: App Launcher
@@ -190,10 +186,6 @@ PanelWindow {
                     anchors.fill: parent
                     visible: BarState.startOpen
                     opacity: visible ? 1.0 : 0.0
-                    transform: Translate {
-                        y: BarState.startOpen ? 0 : 15
-                        Behavior on y { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
-                    }
                     Behavior on opacity { NumberAnimation { duration: 150 } }
                     onAppLaunched: (name) => bar.launchByName(name)
                     onActionTriggered: (act) => bar.handleShelfAction(act)
@@ -204,21 +196,20 @@ PanelWindow {
                     anchors.fill: parent
                     visible: BarState.quickOpen
                     opacity: visible ? 1.0 : 0.0
-                    transform: Translate {
-                        y: BarState.quickOpen ? 0 : 15
-                        Behavior on y { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
-                    }
                     Behavior on opacity { NumberAnimation { duration: 150 } }
                 }
             }
         }
 
-        // ============================================================= 2. THE TASKBAR
+        // ============================================================= 2. THE TASKBAR (strictly pinned to bottom)
         Rectangle {
             id: taskbarRow
-            Layout.fillWidth: true
-            Layout.preferredHeight: bar.barHeight
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            height: bar.barHeight
             color: bar.cDock
+            z: 2
 
             Rectangle {
                 anchors.top: parent.top
