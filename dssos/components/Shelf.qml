@@ -23,6 +23,7 @@ PanelWindow {
 
     readonly property bool shelfOpen: BarState.startOpen || BarState.quickOpen
     readonly property real shelfHeight: 250
+    property string activePanel: "none"
 
     implicitHeight: shelfHeight
     exclusiveZone: 0
@@ -37,6 +38,41 @@ PanelWindow {
         targetLayer: WlrLayer.Top
         visible: shelfWin.shelfOpen
         onClicked: shelfWin.closeShelf()
+    }
+
+    Timer {
+        id: closeTimer
+        interval: 140
+        onTriggered: {
+            if (!shelfWin.shelfOpen) {
+                shelfWin.activePanel = "none";
+            }
+        }
+    }
+
+    onShelfOpenChanged: {
+        if (shelfOpen) {
+            closeTimer.stop();
+            if (BarState.startOpen) activePanel = "launcher";
+            else if (BarState.quickOpen) activePanel = "control";
+        } else {
+            // Keep the active panel rendered while it slides down
+            closeTimer.restart();
+        }
+    }
+
+    Connections {
+        target: BarState
+        function onStartOpenChanged() {
+            if (BarState.startOpen) {
+                shelfWin.activePanel = "launcher";
+            }
+        }
+        function onQuickOpenChanged() {
+            if (BarState.quickOpen) {
+                shelfWin.activePanel = "control";
+            }
+        }
     }
 
     function closeShelf() {
@@ -83,7 +119,6 @@ PanelWindow {
             border.width: 1
             border.color: "#1c1c1c"
 
-            // Direct hardware translation without FBO overhead
             transform: Translate {
                 y: shelfWin.shelfOpen ? 0 : shelfWin.shelfHeight
                 Behavior on y {
@@ -97,7 +132,7 @@ PanelWindow {
             // Shelf 1: App Launcher
             ShelfLauncher {
                 anchors.fill: parent
-                visible: BarState.startOpen
+                visible: shelfWin.activePanel === "launcher"
                 onAppLaunched: (name) => shelfWin.launchByName(name)
                 onActionTriggered: (act) => shelfWin.handleShelfAction(act)
             }
@@ -105,7 +140,7 @@ PanelWindow {
             // Shelf 2: Control Center / Quick Settings
             ShelfControl {
                 anchors.fill: parent
-                visible: BarState.quickOpen
+                visible: shelfWin.activePanel === "control"
             }
         }
     }
