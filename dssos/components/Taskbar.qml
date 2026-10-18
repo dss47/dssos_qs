@@ -284,24 +284,25 @@ PanelWindow {
                     anchors.centerIn: parent
                     spacing: 14
 
-                    DssIcon {
-                        name: "wf"
-                        color: stBox.stColor
-                        opacity: bar.wifiUp ? 1.0 : 0.6
-                        iconSize: 16
+                    Image {
+                        width: 15; height: 15
+                        sourceSize: Qt.size(30, 30)
+                        source: "../assets/icons/wifi.svg"
+                        opacity: bar.wifiUp ? 1.0 : 0.45
                     }
 
-                    DssIcon {
-                        name: "vl"
-                        color: stBox.stColor
-                        opacity: !bar.audioMuted ? 1.0 : 0.6
-                        iconSize: 16
+                    Image {
+                        width: 15; height: 15
+                        sourceSize: Qt.size(30, 30)
+                        source: "../assets/icons/" + (bar.audioMuted ? "volume-x.svg" : "volume-2.svg")
+                        opacity: !bar.audioMuted ? 1.0 : 0.45
                     }
 
-                    DssIcon {
-                        name: "bt"
-                        color: stBox.stColor
-                        iconSize: 16
+                    Image {
+                        width: 15; height: 15
+                        sourceSize: Qt.size(30, 30)
+                        source: "../assets/icons/battery-medium.svg"
+                        opacity: 0.85
                     }
                 }
 

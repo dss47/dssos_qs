@@ -108,11 +108,12 @@ Item {
                             Layout.preferredHeight: 24
                             Layout.alignment: Qt.AlignVCenter
 
-                            DssIcon {
+                            Image {
                                 anchors.centerIn: parent
-                                name: "wf"
-                                color: root.cMuted
-                                iconSize: 18
+                                width: 18; height: 18
+                                sourceSize: Qt.size(36, 36)
+                                source: "../assets/icons/wifi.svg"
+                                opacity: 0.7
                             }
                         }
 
@@ -177,11 +178,12 @@ Item {
                             Layout.preferredHeight: 24
                             Layout.alignment: Qt.AlignVCenter
 
-                            DssIcon {
+                            Image {
                                 anchors.centerIn: parent
-                                name: "bl"
-                                color: root.cMuted
-                                iconSize: 18
+                                width: 18; height: 18
+                                sourceSize: Qt.size(36, 36)
+                                source: "../assets/icons/bluetooth.svg"
+                                opacity: 0.7
                             }
                         }
 
@@ -246,11 +248,12 @@ Item {
                             Layout.preferredHeight: 24
                             Layout.alignment: Qt.AlignVCenter
 
-                            DssIcon {
+                            Image {
                                 anchors.centerIn: parent
-                                name: "mn"
-                                color: root.cMuted
-                                iconSize: 18
+                                width: 18; height: 18
+                                sourceSize: Qt.size(36, 36)
+                                source: "../assets/icons/moon.svg"
+                                opacity: 0.7
                             }
                         }
 
@@ -330,11 +333,12 @@ Item {
                             Layout.preferredHeight: 24
                             Layout.alignment: Qt.AlignVCenter
 
-                            DssIcon {
+                            Image {
                                 anchors.centerIn: parent
-                                name: "sn"
-                                color: root.cMuted
-                                iconSize: 18
+                                width: 18; height: 18
+                                sourceSize: Qt.size(36, 36)
+                                source: "../assets/icons/sun-medium.svg"
+                                opacity: 0.7
                             }
                         }
 
@@ -407,11 +411,12 @@ Item {
                             Layout.preferredHeight: 24
                             Layout.alignment: Qt.AlignVCenter
 
-                            DssIcon {
+                            Image {
                                 anchors.centerIn: parent
-                                name: "vl"
-                                color: root.cMuted
-                                iconSize: 18
+                                width: 18; height: 18
+                                sourceSize: Qt.size(36, 36)
+                                source: "../assets/icons/volume-2.svg"
+                                opacity: 0.7
                             }
                         }
 
@@ -484,11 +489,12 @@ Item {
                             Layout.preferredHeight: 24
                             Layout.alignment: Qt.AlignVCenter
 
-                            DssIcon {
+                            Image {
                                 anchors.centerIn: parent
-                                name: "bt"
-                                color: root.cMuted
-                                iconSize: 18
+                                width: 18; height: 18
+                                sourceSize: Qt.size(36, 36)
+                                source: "../assets/icons/battery-medium.svg"
+                                opacity: 0.7
                             }
                         }
 
