@@ -290,15 +290,15 @@ Item {
                     spacing: 8
 
                     FileIcon {
-                        fileName: model.fileName
-                        isDir: model.fileIsDir
+                        fileName: modelData.fileName
+                        isDir: modelData.fileIsDir
                         size: 56
                         Layout.alignment: Qt.AlignHCenter
                     }
 
                     Text {
                         visible: !cellItem.isRenamingThis
-                        text: model.fileName
+                        text: modelData.fileName
                         color: cellItem.isSelected ? "#ffffff" : Theme.muted
                         font.pixelSize: 13
                         font.family: Theme.fontFamily
@@ -345,7 +345,7 @@ Item {
                                 Qt.callLater(function() {
                                     gridInlineInput.forceActiveFocus();
                                     var dot = gridInlineInput.text.lastIndexOf(".");
-                                    if (!model.fileIsDir && dot > 0) {
+                                    if (!modelData.fileIsDir && dot > 0) {
                                         gridInlineInput.select(0, dot);
                                     } else {
                                         gridInlineInput.selectAll();
@@ -363,12 +363,12 @@ Item {
                     if (index === 0 && root.selectedIndex === -1) {
                         root.selectedIndex = 0;
                         root.selectionChanged(0, {
-                            name: model.fileName,
-                            path: model.filePath,
-                            isDir: model.fileIsDir,
-                            size: root.formatSize(model.fileSize, model.fileIsDir),
-                            modified: root.formatModified(model.fileModified),
-                            type: root.formatType(model.fileName, model.fileIsDir)
+                            name: modelData.fileName,
+                            path: modelData.filePath,
+                            isDir: modelData.fileIsDir,
+                            size: root.formatSize(modelData.fileSize, modelData.fileIsDir),
+                            modified: root.formatModified(modelData.fileModified),
+                            type: root.formatType(modelData.fileName, modelData.fileIsDir)
                         });
                     }
                 }
@@ -385,12 +385,12 @@ Item {
                         root.forceActiveFocus();
                         if (mouse.button === Qt.RightButton) {
                             var info = {
-                                name: model.fileName,
-                                path: model.filePath,
-                                isDir: model.fileIsDir,
-                                size: root.formatSize(model.fileSize, model.fileIsDir),
-                                modified: root.formatModified(model.fileModified),
-                                type: root.formatType(model.fileName, model.fileIsDir)
+                                name: modelData.fileName,
+                                path: modelData.filePath,
+                                isDir: modelData.fileIsDir,
+                                size: root.formatSize(modelData.fileSize, modelData.fileIsDir),
+                                modified: root.formatModified(modelData.fileModified),
+                                type: root.formatType(modelData.fileName, modelData.fileIsDir)
                             };
                             root.selectedIndex = index;
                             root.selectionChanged(index, info);
@@ -402,12 +402,12 @@ Item {
                     onClicked: (mouse) => {
                         if (mouse.button === Qt.LeftButton) {
                             var info = {
-                                name: model.fileName,
-                                path: model.filePath,
-                                isDir: model.fileIsDir,
-                                size: root.formatSize(model.fileSize, model.fileIsDir),
-                                modified: root.formatModified(model.fileModified),
-                                type: root.formatType(model.fileName, model.fileIsDir)
+                                name: modelData.fileName,
+                                path: modelData.filePath,
+                                isDir: modelData.fileIsDir,
+                                size: root.formatSize(modelData.fileSize, modelData.fileIsDir),
+                                modified: root.formatModified(modelData.fileModified),
+                                type: root.formatType(modelData.fileName, modelData.fileIsDir)
                             };
                             root.selectedIndex = index;
                             root.selectionChanged(index, info);
@@ -416,7 +416,7 @@ Item {
 
                     onDoubleClicked: (mouse) => {
                         if (mouse.button === Qt.LeftButton) {
-                            root.fileActivated(index, model.filePath, model.fileIsDir);
+                            root.fileActivated(index, modelData.filePath, modelData.fileIsDir);
                         }
                     }
                 }
