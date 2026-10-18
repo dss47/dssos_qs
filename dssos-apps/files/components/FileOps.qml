@@ -48,18 +48,33 @@ QtObject {
             command: command,
             describeFailure: describeFailure || function (c) { return "Operation failed"; }
         });
-        if (!_proc.running && _queue.length === 1) {
+        if (!_proc.running) {
             _pump();
         }
     }
 
     function _pump() {
         if (_queue.length === 0) return;
+        if (_proc.running) return;
         const next = _queue[0];
         _pendingOp = next.op;
         _errorFrom = next.describeFailure;
         _proc.command = next.command;
         _proc.running = true;
+
+        // If the process failed to launch synchronously (e.g. binary missing),
+        // unblock the queue immediately so subsequent operations are not frozen.
+        if (!_proc.running) {
+            const failedOp = _pendingOp;
+            const errMsg = _errorFrom(-1);
+            _pendingOp = "";
+            _errorFrom = function (c) { return "Operation failed"; };
+            _queue.shift();
+            ops.finished(failedOp, false, errMsg, "");
+            if (_queue.length > 0) {
+                Qt.callLater(_pump);
+            }
+        }
     }
 
 // Every bash loop in this file ends with `done`, and `done` takes the exit

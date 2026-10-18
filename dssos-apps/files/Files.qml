@@ -293,7 +293,7 @@ Window {
                     const created = win.parseOpLines(extra, "CREATED:");
                     if (created.length > 0) {
                         win.pushUndo("Paste text", function() {
-                            fileOps.trash(created[0]);
+                            fileOps.trash(created);
                         });
                     }
                 } else {
