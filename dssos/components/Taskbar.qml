@@ -134,212 +134,241 @@ PanelWindow {
             color: bar.cBorder
         }
 
-        RowLayout {
-            id: barRow
-            anchors.fill: parent
-            spacing: 0
+        // ----------------- Left: Logo Button (.lg)
+        Item {
+            id: logoBtn
+            anchors.left: parent.left
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            width: 48
 
-            // ----------------- Logo Button (.lg)
             Rectangle {
-                Layout.preferredWidth: 48
-                Layout.preferredHeight: 48
+                anchors.fill: parent
+                anchors.topMargin: 4
+                anchors.bottomMargin: 4
+                anchors.leftMargin: 2
+                anchors.rightMargin: 2
+                radius: 6
                 color: BarState.startOpen ? bar.cSel : (logoMouse.containsMouse ? bar.cHover : "transparent")
+            }
 
-                Image {
-                    id: logoImg
-                    anchors.centerIn: parent
-                    width: 32
-                    height: 32
-                    sourceSize.width: 64
-                    sourceSize.height: 64
-                    source: "../assets/logo.png"
-                    fillMode: Image.PreserveAspectFit
-                    smooth: true
-                    asynchronous: true
+            Image {
+                id: logoImg
+                anchors.centerIn: parent
+                width: 32
+                height: 32
+                sourceSize.width: 64
+                sourceSize.height: 64
+                source: "../assets/logo.png"
+                fillMode: Image.PreserveAspectFit
+                smooth: true
+                asynchronous: true
+            }
+
+            MouseArea {
+                id: logoMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    if (BarState.startOpen) BarState.startOpen = false;
+                    else {
+                        BarState.quickOpen = false;
+                        BarState.startOpen = true;
+                    }
                 }
+            }
+        }
 
-                MouseArea {
-                    id: logoMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        if (BarState.startOpen) BarState.startOpen = false;
-                        else {
-                            BarState.quickOpen = false;
-                            BarState.startOpen = true;
-                        }
+        // ----------------- Center: Apps Container (.apps)
+        Item {
+            id: appsContainer
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            width: appsRow.width
+
+            // Ink active indicator
+            Rectangle {
+                id: ink
+                width: 44
+                height: 3
+                y: 0
+                x: bar.activeAppIndex >= 0 ? bar.activeAppIndex * (44 + appsRow.spacing) : 0
+                color: bar.cGreen
+                visible: bar.activeAppIndex >= 0
+
+                Behavior on x {
+                    NumberAnimation {
+                        duration: 140
+                        easing.type: Easing.OutQuad
                     }
                 }
             }
 
-            // ----------------- Apps Container (.apps)
-            Item {
-                id: appsContainer
-                Layout.leftMargin: 4
-                Layout.preferredWidth: appsRow.width
-                Layout.preferredHeight: 48
+            Row {
+                id: appsRow
+                height: 48
+                spacing: 6
 
-                // Ink active indicator
-                Rectangle {
-                    id: ink
-                    width: 44
-                    height: 3
-                    y: 0
-                    x: bar.activeAppIndex >= 0 ? bar.activeAppIndex * 44 : 0
-                    color: bar.cGreen
-                    visible: bar.activeAppIndex >= 0
+                Repeater {
+                    model: ScriptModel { values: bar.taskApps; objectProp: "appId" }
 
-                    Behavior on x {
-                        NumberAnimation {
-                            duration: 140
-                            easing.type: Easing.OutQuad
-                        }
-                    }
-                }
+                    delegate: Item {
+                        id: appDelegate
+                        required property var modelData
+                        property var wins: modelData.toplevels
+                        property string appId: modelData.appId
+                        property var entry: modelData.entry
 
-                Row {
-                    id: appsRow
-                    height: 48
-                    spacing: 0
+                        width: 44
+                        height: 48
 
-                    Repeater {
-                        model: ScriptModel { values: bar.taskApps; objectProp: "appId" }
-
-                        delegate: Rectangle {
-                            id: appDelegate
-                            required property var modelData
-                            property var wins: modelData.toplevels
-                            property string appId: modelData.appId
-                            property var entry: modelData.entry
-
-                            width: 44
-                            height: 48
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.topMargin: 4
+                            anchors.bottomMargin: 4
+                            radius: 6
                             color: appMouse.containsMouse ? bar.cHover : "transparent"
+                        }
 
-                            IconImage {
-                                anchors.centerIn: parent
-                                implicitSize: 32
-                                source: Quickshell.iconPath(entry?.icon ?? appId.toLowerCase(), "application-x-executable")
-                                asynchronous: true
-                            }
+                        IconImage {
+                            anchors.centerIn: parent
+                            implicitSize: 32
+                            source: Quickshell.iconPath(entry?.icon ?? appId.toLowerCase(), "application-x-executable")
+                            asynchronous: true
+                        }
 
-                            MouseArea {
-                                id: appMouse
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
+                        MouseArea {
+                            id: appMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
 
-                                onClicked: mouse => {
-                                    if (mouse.button === Qt.MiddleButton) {
-                                        const act = wins.find(w => w.activated) ?? wins[0];
-                                        if (act) act.close();
-                                        return;
-                                    }
-                                    if (mouse.button === Qt.RightButton) {
-                                        const p = appMouse.mapToItem(barRow, mouse.x, mouse.y);
-                                        let focused = wins.find(w => w.activated) ?? wins[0];
-                                        const entryRef = entry;
-                                        const winsRef = wins;
-                                        const focusedRef = focused;
-                                        const appName = (entryRef && entryRef.name) ? entryRef.name : appId;
-                                        const isPinned = BarState.isPinned(appId);
-                                        ContextMenuState.show(p.x, bar.barHeight + 6, [
-                                            { label: "Open new window", enabled: !!entryRef, action: function() { if (entryRef) entryRef.execute(); } },
-                                            { label: "Focus", enabled: winsRef.length > 0, action: function() {
-                                                let cur = -1;
-                                                for (let ci = 0; ci < winsRef.length; ci++) {
-                                                    if (winsRef[ci].activated) { cur = ci; break; }
-                                                }
-                                                const next = winsRef[(cur + 1) % winsRef.length];
-                                                next.minimized = false;
-                                                next.activate();
-                                            } },
-                                            { sep: true },
-                                            {
-                                                label: isPinned ? "Unpin from taskbar" : "Pin to taskbar",
-                                                action: function() {
-                                                    if (isPinned) BarState.unpinApp(appId);
-                                                    else BarState.pinApp(appId);
-                                                }
-                                            },
-                                            { sep: true },
-                                            { label: "Close window", enabled: winsRef.length > 0, action: function() { if (focusedRef) focusedRef.close(); } },
-                                            { label: "Close all windows", danger: true, enabled: winsRef.length > 0, action: function() { for (let wi = 0; wi < winsRef.length; wi++) winsRef[wi].close(); } }
-                                        ], appName);
-                                        return;
-                                    }
-                                    if (wins.length === 0) {
-                                        if (entry) {
-                                            entry.execute();
-                                        } else {
-                                            if (appId === "dssos-files") Quickshell.execDetached(["dssos-app", "files"]);
-                                            else if (appId === "foot") Quickshell.execDetached(["foot"]);
-                                            else if (appId === "dssos-tasks") Quickshell.execDetached(["dssos-app", "tasks"]);
-                                            else if (appId === "dssos-settings") Quickshell.execDetached(["dssos-app", "settings"]);
-                                        }
-                                        return;
-                                    }
-                                    const focused = wins.find(w => w.activated);
-                                    if (focused) {
-                                        focused.minimized = true;
+                            onClicked: mouse => {
+                                if (mouse.button === Qt.MiddleButton) {
+                                    const act = wins.find(w => w.activated) ?? wins[0];
+                                    if (act) act.close();
+                                    return;
+                                }
+                                if (mouse.button === Qt.RightButton) {
+                                    const p = appMouse.mapToItem(null, mouse.x, mouse.y);
+                                    let focused = wins.find(w => w.activated) ?? wins[0];
+                                    const entryRef = entry;
+                                    const winsRef = wins;
+                                    const focusedRef = focused;
+                                    const appName = (entryRef && entryRef.name) ? entryRef.name : appId;
+                                    const isPinned = BarState.isPinned(appId);
+                                    ContextMenuState.show(p.x, bar.barHeight + 6, [
+                                        { label: "Open new window", enabled: !!entryRef, action: function() { if (entryRef) entryRef.execute(); } },
+                                        { label: "Focus", enabled: winsRef.length > 0, action: function() {
+                                            let cur = -1;
+                                            for (let ci = 0; ci < winsRef.length; ci++) {
+                                                if (winsRef[ci].activated) { cur = ci; break; }
+                                            }
+                                            const next = winsRef[(cur + 1) % winsRef.length];
+                                            next.minimized = false;
+                                            next.activate();
+                                        } },
+                                        { sep: true },
+                                        {
+                                            label: isPinned ? "Unpin from taskbar" : "Pin to taskbar",
+                                            action: function() {
+                                                if (isPinned) BarState.unpinApp(appId);
+                                                else BarState.pinApp(appId);
+                                            }
+                                        },
+                                        { sep: true },
+                                        { label: "Close window", enabled: winsRef.length > 0, action: function() { if (focusedRef) focusedRef.close(); } },
+                                        { label: "Close all windows", danger: true, enabled: winsRef.length > 0, action: function() { for (let wi = 0; wi < winsRef.length; wi++) winsRef[wi].close(); } }
+                                    ], appName);
+                                    return;
+                                }
+                                if (wins.length === 0) {
+                                    if (entry) {
+                                        entry.execute();
                                     } else {
-                                        const target = wins.find(w => w.minimized) ?? wins[0];
-                                        target.minimized = false;
-                                        target.activate();
+                                        if (appId === "dssos-files") Quickshell.execDetached(["dssos-app", "files"]);
+                                        else if (appId === "foot") Quickshell.execDetached(["foot"]);
+                                        else if (appId === "dssos-tasks") Quickshell.execDetached(["dssos-app", "tasks"]);
+                                        else if (appId === "dssos-settings") Quickshell.execDetached(["dssos-app", "settings"]);
                                     }
+                                    return;
+                                }
+                                const focused = wins.find(w => w.activated);
+                                if (focused) {
+                                    focused.minimized = true;
+                                } else {
+                                    const target = wins.find(w => w.minimized) ?? wins[0];
+                                    target.minimized = false;
+                                    target.activate();
                                 }
                             }
                         }
                     }
                 }
             }
+        }
 
-            // ----------------- Spacer (.sp)
-            Item { Layout.fillWidth: true }
+        // ----------------- Right: Tray (Status + Clock)
+        Row {
+            id: rightTray
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            spacing: 0
 
             // ----------------- Status Indicators (.st)
-            Rectangle {
+            Item {
                 id: stBox
-                Layout.preferredHeight: 48
-                Layout.preferredWidth: stRow.implicitWidth + 28
-                color: (BarState.quickOpen && BarState.quickTarget === "status") ? bar.cSel : (stMouse.containsMouse ? bar.cHover : "transparent")
+                width: stRow.implicitWidth + 20
+                height: 48
+
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.topMargin: 4
+                    anchors.bottomMargin: 4
+                    anchors.leftMargin: 2
+                    anchors.rightMargin: 2
+                    radius: 6
+                    color: (BarState.quickOpen && BarState.quickTarget === "status") ? bar.cSel : (stMouse.containsMouse ? bar.cHover : "transparent")
+                }
 
                 readonly property color stColor: "#ffffff"
 
                 RowLayout {
                     id: stRow
                     anchors.centerIn: parent
-                    spacing: 14
+                    spacing: 12
 
                     DssIcon {
-                        Layout.preferredWidth: 16
-                        Layout.preferredHeight: 16
+                        Layout.preferredWidth: 18
+                        Layout.preferredHeight: 18
                         Layout.alignment: Qt.AlignVCenter
                         name: bar.netIcon
                         color: "#ffffff"
                         opacity: bar.netConnected ? 1.0 : 0.4
-                        iconSize: 16
+                        iconSize: 18
                     }
 
                     DssIcon {
-                        Layout.preferredWidth: 16
-                        Layout.preferredHeight: 16
+                        Layout.preferredWidth: 18
+                        Layout.preferredHeight: 18
                         Layout.alignment: Qt.AlignVCenter
                         name: "vl"
                         color: "#ffffff"
                         opacity: !bar.audioMuted ? 1.0 : 0.6
-                        iconSize: 16
+                        iconSize: 18
                     }
 
                     DssIcon {
-                        Layout.preferredWidth: 16
-                        Layout.preferredHeight: 16
+                        Layout.preferredWidth: 18
+                        Layout.preferredHeight: 18
                         Layout.alignment: Qt.AlignVCenter
                         name: "bt"
                         color: "#ffffff"
-                        iconSize: 16
+                        iconSize: 18
                     }
                 }
 
@@ -361,18 +390,28 @@ PanelWindow {
             }
 
             // ----------------- Clock (.tm)
-            Rectangle {
+            Item {
                 id: tmBox
-                Layout.preferredHeight: 48
-                Layout.preferredWidth: tmText.implicitWidth + 32
-                color: (BarState.quickOpen && BarState.quickTarget === "clock") ? bar.cSel : (tmMouse.containsMouse ? bar.cHover : "transparent")
+                width: tmText.implicitWidth + 24
+                height: 48
+
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.topMargin: 4
+                    anchors.bottomMargin: 4
+                    anchors.leftMargin: 2
+                    anchors.rightMargin: 4
+                    radius: 6
+                    color: (BarState.quickOpen && BarState.quickTarget === "clock") ? bar.cSel : (tmMouse.containsMouse ? bar.cHover : "transparent")
+                }
 
                 Text {
                     id: tmText
                     anchors.centerIn: parent
                     text: Qt.formatTime(clock.date, "hh:mm")
                     color: "#ffffff"
-                    font.pixelSize: 13
+                    font.pixelSize: 14
+                    font.weight: Font.Medium
                 }
 
                 MouseArea {
