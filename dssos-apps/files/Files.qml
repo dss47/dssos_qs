@@ -616,6 +616,14 @@ Window {
         }
     }
 
+    function refresh(): void {
+        let p = win.currentPath;
+        let url = "file://" + p.split("/").map(encodeURIComponent).join("/");
+        folderModel.folder = "";
+        folderModel.folder = url;
+        win.repaintDebounce.restart();
+    }
+
     function goUp(): void {
         if (win.currentPath === "/" || win.currentPath === "") return;
         let lastSlash = win.currentPath.lastIndexOf("/");
@@ -893,6 +901,7 @@ Window {
     Shortcut { sequence: "Alt+Left";  onActivated: win.goBack() }
     Shortcut { sequence: "Alt+Right"; onActivated: win.goForward() }
     Shortcut { sequence: "Backspace"; onActivated: win.goUp() }
+    Shortcut { sequence: "F5"; onActivated: win.refresh() }
     Shortcut { sequence: "F2"; onActivated: if (!win.isTrash) win.beginRename() }
     Shortcut { sequence: "Menu";     onActivated: win.openContextMenuShortcut() }
     Shortcut { sequence: "Shift+F10"; onActivated: win.openContextMenuShortcut() }
@@ -1059,6 +1068,14 @@ Window {
         }
 
         ctxMenu.popup(gx, gy, [
+            {
+                label: "Refresh",
+                shortcut: "F5",
+                action: function() {
+                    win.refresh();
+                }
+            },
+            { separator: true },
             {
                 label: "New folder",
                 shortcut: "Ctrl+N",

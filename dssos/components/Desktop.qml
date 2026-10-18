@@ -13,12 +13,44 @@ PanelWindow {
         right: true
     }
     WlrLayershell.layer: WlrLayer.Bottom
+    WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
     exclusionMode: ExclusionMode.Ignore
     color: "transparent"
+
+    Rectangle {
+        id: refreshPulse
+        anchors.fill: parent
+        color: "#ffffff"
+        opacity: 0
+        visible: opacity > 0
+
+        NumberAnimation on opacity {
+            id: refreshAnim
+            from: 0.12
+            to: 0.0
+            duration: 120
+            running: false
+        }
+    }
+
+    function refresh() {
+        refreshAnim.restart();
+    }
+
+    Shortcut {
+        sequence: "F5"
+        onActivated: desktopWin.refresh()
+    }
 
     function openMenu(x, y) {
         Quickshell.execDetached(["qs", "ipc", "-p", ShellPaths.appsHost, "call", "context", "hide"]);
         ContextMenuState.showAt(x, y, [
+            {
+                label: "Refresh",
+                hint: "F5",
+                action: function() { desktopWin.refresh(); }
+            },
+            { sep: true },
             {
                 label: "Terminal",
                 hint: "Super+T",
@@ -38,10 +70,6 @@ PanelWindow {
             {
                 label: "Display",
                 action: function() { Quickshell.execDetached(["dssos-app", "settings"]); }
-            },
-            {
-                label: "Settings",
-                action: function() { Quickshell.execDetached(["dssos-app", "settings"]); }
             }
         ], desktopWin.height);
     }
@@ -58,6 +86,7 @@ PanelWindow {
                 desktopWin.openMenu(mouse.x, mouse.y);
             } else {
                 ContextMenuState.hide();
+                desktopWin.forceActiveFocus();
             }
         }
     }
