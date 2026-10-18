@@ -222,7 +222,14 @@ ColumnLayout {
             onStatusChanged: {
                 if (status !== Image.Ready) return;
                 stageImage.grabToImage(function (result) {
-                    const tmp = "/tmp/dssos-avatar-staged.png";
+                    // Was the fixed path /tmp/dssos-avatar-staged.png. Two sessions
+                    // on the same machine overwrote each other's staged avatar, and
+                    // the file survived logout. XDG_RUNTIME_DIR is per-user, mode 0700
+                    // and wiped on logout, which is what a scratch file wants.
+                    const runtime = Quickshell.env("XDG_RUNTIME_DIR");
+                    const tmp = (runtime && runtime !== ""
+                                  ? runtime + "/dssos-avatar-staged.png"
+                                  : "/tmp/dssos-avatar-staged-" + Quickshell.env("USER") + ".png");
                     if (result.saveToFile(tmp)) {
                         root.setAvatar(tmp);
                     } else {

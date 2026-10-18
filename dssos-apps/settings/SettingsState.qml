@@ -281,6 +281,16 @@ QtObject {
                                  state.wfCube ? "1" : "0"]);
     }
 
+    // Actually hand the layout to X. Until now kbLayout was only ever written
+    // to settings.json: the picker had no onSelected at all, and even if it had
+    // there was nothing on this side to run.
+    function applyKeyboardLayout(name) {
+        if (!name) return;
+        // The ctl binary validates the name against this list, so a corrupt
+        // JSON cannot turn into `setxkbmap $(...)`.
+        Quickshell.execDetached(["dssos-settings-ctl", "kb-layout", name]);
+    }
+
     function setWayfire(section, key, val) {
         Quickshell.execDetached(["dssos-settings-ctl", "wayfire", section, key, String(val)]);
     }
@@ -449,14 +459,20 @@ QtObject {
         }
     }
 
+    // Whether anything is actually watching this state. The Settings window
+    // sets it on show and clears it on close; with no window open there is no
+    // reason to spawn a battery query every 15 seconds.
+    property bool pollEnabled: false
+
     property var batteryTimer: Timer {
         id: batteryTimer
         
         interval: 15000
         repeat: true
-        running: true
+        running: state.pollEnabled
         onTriggered: batteryProc.running = true
     }
+    onPollEnabledChanged: if (!pollEnabled) batteryTimer.count = 0;
 
     property var randrProc: Process {
         id: randrProc

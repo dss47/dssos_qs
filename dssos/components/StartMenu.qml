@@ -108,7 +108,16 @@ PanelWindow {
         BarState.startOpen = false;
     }
     function launchFirst() {
-        if (menu.apps.length > 0) menu.launch(menu.apps[grid.currentIndex]);
+        // Typing in the search box sets grid.currentIndex to -1 whenever the
+        // query matches nothing, and menu.apps[-1] is undefined -- launch()
+        // then dereferenced it and the Enter key threw.
+        const i = grid.currentIndex;
+        if (i < 0 || i >= menu.apps.length) {
+            // StartMenu has no toast helper of its own; the empty
+            // grid below already renders the "no results" state.
+            return;
+        }
+        menu.launch(menu.apps[i]);
     }
 
     // ================= components =================
@@ -338,7 +347,7 @@ PanelWindow {
                 }
                 Text {
                     Layout.fillWidth: true
-                    text: "saad"
+                    text: ShellPaths.userName
                     color: Style.text
                     font.pixelSize: 13
                     font.bold: true

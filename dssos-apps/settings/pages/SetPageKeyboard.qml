@@ -31,8 +31,22 @@ ColumnLayout {
             hint: "Active XKB layout for physical keyboard"
             stacked: true
             SetRadio {
+                // Same story as the accent picker: hardcoded current, no
+                // onSelected. kbLayout was saved to JSON and read back, but
+                // nothing ever told X about it.
                 options: ["English (US)", "English (UK)", "French (AZERTY)", "German (QWERTZ)"]
-                current: 0
+                current: {
+                    const order = ["us", "gb", "fr", "de"];
+                    const i = order.indexOf(SettingsState.kbLayout);
+                    return i === -1 ? 0 : i;
+                }
+                onSelected: (idx) => {
+                    const order = ["us", "gb", "fr", "de"];
+                    if (idx >= 0 && idx < order.length) {
+                        SettingsState.kbLayout = order[idx];
+                        SettingsState.applyKeyboardLayout(order[idx]);
+                    }
+                }
             }
         }
 

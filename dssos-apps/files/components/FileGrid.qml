@@ -10,6 +10,56 @@ Item {
     property int selectedIndex: -1
     property string searchQuery: ""
 
+    // ---------------------------------------------------------------------
+    // Why the grid filters the MODEL and not the delegate
+    //
+    // It used to do `delegate.visible = name.includes(searchQuery)`. A
+    // GridView gives every index a fixed cell, so a hidden delegate leaves an
+    // empty cell behind: searching "dossier" in a folder of twenty files
+    // produced a grid with holes in it instead of a compact result.
+    //
+    // The filter has to change the delegate COUNT for the view to reflow, and
+    // the count only follows the model. FolderListModel is a C++ type with no
+    // filter hook (nameFilters keeps every directory), so the filtered rows are
+    // copied into a plain JS array and that is what GridView gets as its
+    // model. GridView still virtualises -- only the visible cells exist -- and
+    // the rows now pack left to right with no gaps.
+    property var rows: []
+
+    function rebuildRows() {
+        if (!model || !model.get) {
+            rows = [];
+            return;
+        }
+        const q = searchQuery.trim().toLowerCase();
+        const out = [];
+        for (let i = 0; i < model.count; ++i) {
+            const fn = model.get(i, "fileName") || "";
+            if (q !== "" && fn.toLowerCase().indexOf(q) === -1) continue;
+            out.push({
+                fileName: fn,
+                filePath: model.get(i, "filePath") || "",
+                fileIsDir: Boolean(model.get(i, "fileIsDir")),
+                fileSize: model.get(i, "fileSize") || 0,
+                fileModified: model.get(i, "fileModified") || new Date()
+            });
+        }
+        rows = out;
+    }
+
+    onSearchQueryChanged: rebuildRows()
+    onModelChanged: rebuildRows()
+    Component.onCompleted: rebuildRows()
+
+    // FolderListModel is a QAbstractListModel: countChanged is the signal that
+    // actually fires when the directory listing changes.
+    Connections {
+        target: root.model
+        function onCountChanged() { root.rebuildRows(); }
+    }
+
+    readonly property int rowCount: rows.length
+
     signal fileActivated(int index, string filePath, bool isDir)
     signal selectionChanged(int index, var fileInfo)
     signal contextMenuRequested(real globalX, real globalY, var fileInfo)
@@ -91,7 +141,7 @@ Item {
                 event.accepted = true;
             }
         } else if (event.key === Qt.Key_Right) {
-            if (model && root.selectedIndex < model.count - 1) {
+            if (root.selectedIndex < rows.length - 1) {
                 root.selectIndex(root.selectedIndex + 1);
                 event.accepted = true;
             }
@@ -103,7 +153,7 @@ Item {
             }
         } else if (event.key === Qt.Key_Down) {
             var cols = Math.max(1, Math.floor(gridView.width / gridView.cellWidth));
-            if (model && root.selectedIndex + cols < model.count) {
+            if (root.selectedIndex + cols < rows.length) {
                 root.selectIndex(root.selectedIndex + cols);
                 event.accepted = true;
             }
@@ -187,7 +237,9 @@ Item {
         cellWidth: 136
         cellHeight: 138
         clip: true
-        model: root.model
+        // NOT root.model: that is the unfiltered FolderListModel, and feeding
+        // it here is what produced the gaps.
+        model: root.rows
         boundsBehavior: Flickable.StopAtBounds
 
         MouseArea {
@@ -214,12 +266,6 @@ Item {
             id: cellItem
             width: 130
             height: 132
-
-            // Filtrage si recherche active
-            visible: {
-                if (root.searchQuery === "") return true;
-                return fileName.toLowerCase().includes(root.searchQuery.toLowerCase());
-            }
 
             readonly property bool isSelected: root.allSelected || index === root.selectedIndex
             readonly property bool isRenamingThis: root.renaming && (index === root.selectedIndex)
@@ -378,28 +424,24 @@ Item {
         }
     }
 
+    // Indexed against root.rows, not root.model: those are two different
+    // sequences the moment a search is active, and the delegate indices follow
+    // the rows.
     function getItem(idx: int) {
-        if (!model || idx < 0 || idx >= model.count) return null;
-        if (model.get) {
-            const fn = model.get(idx, "fileName") || "";
-            const fp = model.get(idx, "filePath") || "";
-            const isD = Boolean(model.get(idx, "fileIsDir"));
-            const sz = model.get(idx, "fileSize") || 0;
-            const mod = model.get(idx, "fileModified") || new Date();
-            return {
-                name: fn,
-                path: fp,
-                isDir: isD,
-                size: formatSize(sz, isD),
-                modified: formatModified(mod),
-                type: formatType(fn, isD)
-            };
-        }
-        return null;
+        if (idx < 0 || idx >= rows.length) return null;
+        const r = rows[idx];
+        return {
+            name: r.fileName,
+            path: r.filePath,
+            isDir: r.fileIsDir,
+            size: formatSize(r.fileSize, r.fileIsDir),
+            modified: formatModified(r.fileModified),
+            type: formatType(r.fileName, r.fileIsDir)
+        };
     }
 
     function selectIndex(idx: int): void {
-        if (!model || idx < 0 || idx >= model.count) return;
+        if (idx < 0 || idx >= rows.length) return;
         selectedIndex = idx;
         const item = getItem(idx);
         if (item) {
@@ -409,7 +451,7 @@ Item {
     }
 
     function selectFirst(): void {
-        if (model && model.count > 0) {
+        if (rows.length > 0) {
             selectIndex(0);
         }
     }
@@ -422,7 +464,10 @@ Item {
             var idx = gridView.indexAt(cx, cy);
             if (idx >= 0) {
                 var item = root.getItem(idx);
-                if (item && (root.searchQuery === "" || item.name.toLowerCase().includes(root.searchQuery.toLowerCase()))) {
+                // No second filter here: root.rows is already filtered, and
+                // getItem() indexes it, so re-testing the name only ever
+                // disagreed with what the grid actually showed.
+                if (item) {
                     root.selectedIndex = idx;
                     root.selectionChanged(idx, item);
                     root.contextMenuRequested(gx, gy, item);

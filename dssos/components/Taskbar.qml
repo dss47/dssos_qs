@@ -249,7 +249,13 @@ PanelWindow {
                                             for (let ci = 0; ci < winsRef.length; ci++) {
                                                 if (winsRef[ci].activated) { cur = ci; break; }
                                             }
-                                            winsRef[(cur + 1) % winsRef.length].activate();
+                                            // activate() on a minimized window does
+                                            // not map it, so cycling to a
+                                            // minimized entry appeared to do
+                                            // nothing at all. Unminimize first.
+                                            const next = winsRef[(cur + 1) % winsRef.length];
+                                            next.minimized = false;
+                                            next.activate();
                                         } },
                                         { label: "Close window", enabled: winsRef.length > 0, action: function() { if (focusedRef) { focusedRef.close(); } } },
                                         { sep: true },

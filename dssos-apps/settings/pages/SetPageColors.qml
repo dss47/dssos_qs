@@ -41,8 +41,21 @@ ColumnLayout {
             stacked: true
             isLast: true
             SetRadio {
-                options: ["Emerald (#34c77b)", "Cyan (#29b6f6)", "Amber (#ffb300)", "Crimson (#ef5350)", "Monochrome (#e0e0e0)"]
-                current: 0
+                // These used to be decoration: `current: 0` was hardcoded and
+                // there was no onSelected, so picking another colour changed
+                // nothing. The names below are the ones Style.accentName
+                // actually understands -- it switches on green/amber/mint/
+                // danger, and anything else silently fell back to greenBase.
+                options: ["Emerald", "Mint", "Amber", "Crimson"]
+                current: {
+                    const order = ["green", "mint", "amber", "danger"];
+                    const i = order.indexOf(SettingsState.accent);
+                    return i === -1 ? 0 : i;
+                }
+                onSelected: (idx) => {
+                    const order = ["green", "mint", "amber", "danger"];
+                    if (idx >= 0 && idx < order.length) SettingsState.accent = order[idx];
+                }
             }
         }
     }

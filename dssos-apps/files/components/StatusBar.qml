@@ -30,7 +30,10 @@ Rectangle {
     Process {
         id: dfProc
         command: ["df", "-h", Paths.home]
-        running: true
+        // Started once on load and then re-armed by a 15s timer, whether
+          // or not the Files window was on screen: four df processes a
+          // minute for a status bar nobody could see.
+          running: root.visible
         stdout: StdioCollector {
             onStreamFinished: {
                 try {

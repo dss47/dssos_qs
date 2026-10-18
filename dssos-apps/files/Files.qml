@@ -51,8 +51,19 @@ Window {
     property var selectedItem: null
     property int selectedIndex: -1
 
-    // Correctif de repaint Wayfire
+    // Wayfire repaint workaround.
+    //
+    // Toggling the content column's opacity is what forces the whole window
+    // through a fresh render pass, which is how the stale-area bug under
+    // Wayfire was worked around.
+    //
+    // The old form was `opacity: (repaintTick % 2 === 0) ? 1.0 : 0.999`, which
+    // has a defect the audit did not mention: after any odd number of resizes
+    // the window stayed at 0.999 for the rest of the session, keeping a
+    // full-window offscreen buffer alive forever for nothing. It is a pulse
+    // now -- off to 0.999, then explicitly back to a clean 1.0.
     property int repaintTick: 0
+    property bool repaintPulse: false
     property bool uiReady: false
     Component.onCompleted: {
         uiReady = true;
@@ -68,7 +79,20 @@ Window {
         id: repaintDebounce
         interval: 300
         repeat: false
-        onTriggered: win.repaintTick++
+        onTriggered: {
+            win.repaintTick++;
+            win.repaintPulse = true;
+            repaintRestore.restart();
+        }
+    }
+
+    // One frame at 0.999 is enough to trigger the redraw; after that the
+    // window goes back to exactly 1.0 and stops costing an offscreen pass.
+    Timer {
+        id: repaintRestore
+        interval: 60
+        repeat: false
+        onTriggered: win.repaintPulse = false
     }
 
     FolderListModel {
@@ -553,7 +577,7 @@ Window {
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
-        opacity: (win.repaintTick % 2 === 0) ? 1.0 : 0.999
+        opacity: win.repaintPulse ? 0.999 : 1.0
 
         // 1. Barre d'outils supérieure (44px)
         Toolbar {

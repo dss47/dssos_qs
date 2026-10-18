@@ -1,46 +1,65 @@
 pragma Singleton
 import QtQuick
+import common as C
 
+// GENERATED PASS-THROUGH, not an independent palette.
+//
+// This file used to carry its own copy of every colour. Four Theme.qml
+// singletons existed across dssos-apps and they had already drifted, so
+// changing a colour meant finding which module happened to be loaded.
+//
+// common/Theme.qml is now the single source of truth. Every property is
+// forwarded; only the few values listed in OVERRIDES below are kept local,
+// because they are a deliberate layout choice of this app and not a palette
+// decision. Add a new property to common/Theme.qml, not here.
 QtObject {
-    // Palette DssOS stricte (TASKS_DESIGN.md)
-    readonly property color bg: "#000000"
-    readonly property color sidebar: "#050505"
-    readonly property color status: "#080808"
-    readonly property color card: "#131313"
-    readonly property color divider: "#232323"
-    readonly property color dividerSide: "#1c1c1c"
-    readonly property color text: "#f0f0f0"
-    readonly property color muted: "#8c8c8c"
-    readonly property color accent: "#34c77b"
-    readonly property color selected: "#1b1b1b"
-    readonly property color control: "#0a0a0a"
-    readonly property color rowHover: "#0d0d0d"
-    readonly property color tileHover: "#191919"
-
-    // Couleurs de ressources
-    readonly property color cpu: "#4da3ff"
-    readonly property color memory: "#b57bee"
-    readonly property color disk: "#3ecfd0"
-    readonly property color network: "#f5b942"
-
-    // Couleurs d'actions destructives
-    readonly property color dangerDark: "#2a1515"
-    readonly property color dangerRed: "#ff6b6b"
-    readonly property color dangerBright: "#ff5a5a"
-    readonly property color dangerText: "#1a0505"
-
-    // Métriques
-    readonly property int sidebarWidth: 156
-    readonly property int tileHeight: 112
-    readonly property int rowHeight: 44
-    readonly property int statusBarHeight: 28
-    readonly property int topBarHeight: 52
-
-    // Polices
-    readonly property string fontFamily: "sans-serif"
-    readonly property int fontSizeNormal: 13
-    readonly property int fontSizeSmall: 11
-    readonly property int fontSizeHeader: 12
-    readonly property int fontSizeValue: 20
-    readonly property int fontSizeHero: 22
+    readonly property color bg: C.Theme.bg
+    readonly property color sidebar: C.Theme.sidebar
+    readonly property color side: C.Theme.side
+    readonly property color list: C.Theme.list
+    readonly property color status: C.Theme.status
+    readonly property color rail: C.Theme.rail
+    readonly property color card: C.Theme.card
+    readonly property color cardHover: C.Theme.cardHover
+    readonly property color divider: C.Theme.divider
+    readonly property color dividerSide: C.Theme.dividerSide
+    readonly property color edge: C.Theme.edge
+    readonly property color text: C.Theme.text
+    readonly property color muted: C.Theme.muted
+    readonly property color accent: C.Theme.accent
+    readonly property color accentDark: C.Theme.accentDark
+    readonly property color selected: C.Theme.selected
+    readonly property color hover: C.Theme.hover
+    readonly property color control: C.Theme.control
+    readonly property color controlHover: C.Theme.controlHover
+    readonly property color rowHover: C.Theme.rowHover
+    readonly property color tileHover: C.Theme.tileHover
+    readonly property color danger: C.Theme.danger
+    readonly property color cpu: C.Theme.cpu
+    readonly property color memory: C.Theme.memory
+    readonly property color disk: C.Theme.disk
+    readonly property color network: C.Theme.network
+    readonly property color dangerDark: C.Theme.dangerDark
+    readonly property color dangerRed: C.Theme.dangerRed
+    readonly property color dangerBright: C.Theme.dangerBright
+    readonly property color dangerText: C.Theme.dangerText
+    readonly property int scrollWidth: C.Theme.scrollWidth
+    readonly property color scrollThumb: C.Theme.scrollThumb
+    readonly property color scrollThumbHover: C.Theme.scrollThumbHover
+    readonly property int sidebarWidth: 156   // matches common, kept explicit so the two lists agree
+    readonly property int toolbarHeight: C.Theme.toolbarHeight
+    readonly property int previewWidth: C.Theme.previewWidth
+    readonly property int listHeaderHeight: C.Theme.listHeaderHeight
+    readonly property int listRowHeight: C.Theme.listRowHeight
+    readonly property int tileHeight: C.Theme.tileHeight
+    readonly property int rowHeight: C.Theme.rowHeight
+    readonly property int statusBarHeight: 28   // matches common, kept explicit so the two lists agree
+    readonly property int topBarHeight: C.Theme.topBarHeight
+    readonly property string fontFamily: C.Theme.fontFamily
+    readonly property int fontSizeNormal: C.Theme.fontSizeNormal
+    readonly property int fontSizeSmall: C.Theme.fontSizeSmall
+    readonly property int fontSizeHeader: C.Theme.fontSizeHeader
+    readonly property int fontSizeTitle: C.Theme.fontSizeTitle
+    readonly property int fontSizeValue: C.Theme.fontSizeValue
+    readonly property int fontSizeHero: C.Theme.fontSizeHero
 }

@@ -26,7 +26,18 @@ Window {
 
     property int repaintTick: 0
     property bool uiReady: false
-    Component.onCompleted: uiReady = true
+    Component.onCompleted: {
+        uiReady = true;
+        // Let SettingsState poll while this window exists, and stop the moment
+        // it does not.
+        if (SettingsState) SettingsState.pollEnabled = true;
+    }
+    onClosing: {
+        if (SettingsState) SettingsState.pollEnabled = false;
+    }
+    Component.onDestruction: {
+        if (SettingsState) SettingsState.pollEnabled = false;
+    }
     onWidthChanged: if (uiReady) repaintDebounce.restart()
     onHeightChanged: if (uiReady) repaintDebounce.restart()
 
