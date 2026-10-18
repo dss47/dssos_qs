@@ -14,6 +14,7 @@ ShellRoot {
 
     Comp.Desktop {}
     Comp.Taskbar {}
+    Comp.Shelf {}
     Comp.ContextMenu {}
 
     // SUPER tap: qs -c $qsConfig ipc call start toggle

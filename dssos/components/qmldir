@@ -5,6 +5,7 @@ singleton ShellState ShellState.qml
 singleton ShellPaths ShellPaths.qml
 singleton DssIcons DssIcons.qml
 DssIcon DssIcon.qml
+Shelf Shelf.qml
 ShelfLauncher ShelfLauncher.qml
 ShelfControl ShelfControl.qml
 Taskbar Taskbar.qml
