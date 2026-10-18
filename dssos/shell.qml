@@ -30,6 +30,9 @@ ShellRoot {
         function toggle(): void { Comp.BarState.quickOpen = !Comp.BarState.quickOpen; }
         function open(): void { Comp.BarState.quickOpen = true; }
         function close(): void { Comp.BarState.quickOpen = false; }
+        function wifi(): void { Comp.BarState.quickOpen = true; Comp.BarState.controlSubView = "wifi"; }
+        function bluetooth(): void { Comp.BarState.quickOpen = true; Comp.BarState.controlSubView = "bluetooth"; }
+        function power(): void { Comp.BarState.quickOpen = true; Comp.BarState.controlSubView = "power"; }
     }
 
     IpcHandler {

@@ -6,6 +6,7 @@ QtObject {
     property bool startOpen: false
     property bool hiddenOpen: false
     property string quickTarget: ""
+    property string controlSubView: ""
 
     // only one flyout at a time
     onQuickOpenChanged: {
@@ -15,10 +16,11 @@ QtObject {
             if (quickTarget === "") quickTarget = "status";
         } else {
             quickTarget = "";
+            controlSubView = "";
         }
     }
-    onStartOpenChanged:  if (startOpen)  { quickOpen = false; hiddenOpen = false; quickTarget = ""; }
-    onHiddenOpenChanged: if (hiddenOpen) { quickOpen = false; startOpen = false; quickTarget = ""; }
+    onStartOpenChanged:  if (startOpen)  { quickOpen = false; hiddenOpen = false; quickTarget = ""; controlSubView = ""; }
+    onHiddenOpenChanged: if (hiddenOpen) { quickOpen = false; startOpen = false; quickTarget = ""; controlSubView = ""; }
 
     // chevron x (window coords) for anchoring the hidden-tray popup
     property real hiddenX: 0
