@@ -184,6 +184,7 @@ PanelWindow {
         Item {
             id: appsContainer
             anchors.horizontalCenter: parent.horizontalCenter
+            anchors.horizontalCenterOffset: -80
             anchors.top: parent.top
             anchors.bottom: parent.bottom
             width: appsRow.width
