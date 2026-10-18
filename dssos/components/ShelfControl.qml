@@ -26,6 +26,16 @@ Item {
     property bool dndActive: false
     property bool nightActive: false
     property bool saverActive: false
+    property bool hotspotActive: false
+
+    // Real Power Saver state via powerprofilesctl
+    Process {
+        id: powerRead
+        command: ["powerprofilesctl", "get"]
+        stdout: StdioCollector {
+            onStreamFinished: root.saverActive = (text.trim() === "power-saver")
+        }
+    }
 
     // Real Brightness
     property real brightnessVal: 0.70
@@ -83,6 +93,7 @@ Item {
     Component.onCompleted: {
         brightRead.running = true;
         btRead.running = true;
+        powerRead.running = true;
     }
 
     component WideTile: Rectangle {
@@ -94,45 +105,44 @@ Item {
         signal clicked()
 
         Layout.fillWidth: true
-        Layout.preferredHeight: 56
+        Layout.preferredHeight: 54
         radius: 0
-        color: tile.active ? "#11291b" : (tileMouse.containsMouse ? "#181818" : "#0d0d0d")
+        color: tile.active ? root.cGreen : (tileMouse.containsMouse ? "#181818" : "#0d0d0d")
         border.width: 1
-        border.color: tile.active ? root.cGreen : root.cBorder
+        border.color: tile.active ? root.cGreen : (tileMouse.containsMouse ? "#2f2f2f" : root.cBorder)
 
-        Behavior on color { ColorAnimation { duration: 120 } }
-        Behavior on border.color { ColorAnimation { duration: 120 } }
+        Behavior on color { ColorAnimation { duration: 100 } }
+        Behavior on border.color { ColorAnimation { duration: 100 } }
+
+        // Hover & press overlay
+        Rectangle {
+            anchors.fill: parent
+            color: tile.active ? "#000000" : "#ffffff"
+            opacity: tileMouse.pressed ? 0.14 : (tileMouse.containsMouse ? 0.05 : 0)
+            Behavior on opacity { NumberAnimation { duration: 80 } }
+        }
 
         RowLayout {
             anchors.fill: parent
             anchors.leftMargin: 12
             anchors.rightMargin: 12
-            spacing: 12
+            spacing: 10
 
-            Rectangle {
-                Layout.preferredWidth: 32
-                Layout.preferredHeight: 32
+            DssIcon {
                 Layout.alignment: Qt.AlignVCenter
-                color: tile.active ? root.cGreen : "#181818"
-                border.width: 1
-                border.color: tile.active ? root.cGreen : "#262626"
-
-                DssIcon {
-                    anchors.centerIn: parent
-                    name: tile.iconName
-                    color: tile.active ? "#04130a" : root.cMuted
-                    iconSize: 16
-                }
+                name: tile.iconName
+                color: tile.active ? "#04130a" : (tileMouse.containsMouse ? root.cText : root.cMuted)
+                iconSize: 18
             }
 
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignVCenter
-                spacing: 2
+                spacing: 1
 
                 Text {
                     text: tile.title
-                    color: root.cText
+                    color: tile.active ? "#04130a" : root.cText
                     font.pixelSize: 12
                     font.weight: tile.active ? Font.DemiBold : Font.Normal
                     elide: Text.ElideRight
@@ -141,7 +151,7 @@ Item {
 
                 Text {
                     text: tile.subtitle
-                    color: tile.active ? root.cGreen : root.cMuted
+                    color: tile.active ? "#0e341d" : root.cMuted
                     font.pixelSize: 10
                     elide: Text.ElideRight
                     Layout.fillWidth: true
@@ -224,10 +234,12 @@ Item {
                 anchors.rightMargin: 22
 
                 GridLayout {
-                    anchors.fill: parent
-                    columns: 2
-                    rowSpacing: 8
-                    columnSpacing: 8
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    columns: 4
+                    rowSpacing: 10
+                    columnSpacing: 10
 
                     // 1. Wi-Fi
                     WideTile {
@@ -255,7 +267,7 @@ Item {
                     // 3. Airplane mode
                     WideTile {
                         iconName: "pl"
-                        title: "Airplane mode"
+                        title: "Airplane"
                         subtitle: root.planeActive ? "On" : "Off"
                         active: root.planeActive
                         onClicked: {
@@ -271,7 +283,18 @@ Item {
                         }
                     }
 
-                    // 4. Night light
+                    // 4. Hotspot
+                    WideTile {
+                        iconName: "hs"
+                        title: "Hotspot"
+                        subtitle: root.hotspotActive ? "On" : "Off"
+                        active: root.hotspotActive
+                        onClicked: {
+                            root.hotspotActive = !root.hotspotActive;
+                        }
+                    }
+
+                    // 5. Night light
                     WideTile {
                         iconName: "mn"
                         title: "Night light"
@@ -282,7 +305,7 @@ Item {
                         }
                     }
 
-                    // 5. Do not disturb
+                    // 6. Do not disturb
                     WideTile {
                         iconName: "dn"
                         title: "Do not disturb"
@@ -293,7 +316,7 @@ Item {
                         }
                     }
 
-                    // 6. Battery saver
+                    // 7. Battery saver
                     WideTile {
                         iconName: "sv"
                         title: "Battery saver"
@@ -301,6 +324,19 @@ Item {
                         active: root.saverActive
                         onClicked: {
                             root.saverActive = !root.saverActive;
+                            Quickshell.execDetached(["powerprofilesctl", "set", root.saverActive ? "power-saver" : "balanced"]);
+                        }
+                    }
+
+                    // 8. Lock screen
+                    WideTile {
+                        iconName: "lk"
+                        title: "Lock screen"
+                        subtitle: "Lock session"
+                        active: false
+                        onClicked: {
+                            BarState.quickOpen = false;
+                            Quickshell.execDetached(["hyprlock"]);
                         }
                     }
                 }
