@@ -8,33 +8,26 @@ QtObject {
     signal finished(string op, bool ok, string message, string extra)
     signal folderCreated(string path, string name)
 
+    property bool _started: false
+
     property var _proc: Process {
         running: false
         stdout: StdioCollector { id: outCol }
         stderr: StdioCollector { id: errCol }
+        onRunningChanged: {
+            if (running) {
+                ops._started = true;
+            } else if (!ops._started && ops._pendingOp !== "") {
+                // Quickshell failed to spawn the process (e.g. binary not found)
+                // In Quickshell, onExited never fires in this case; runningChanged fires with false.
+                ops._finishCurrent(false, ops._errorFrom(-1), "");
+            }
+        }
         onExited: (code) => {
             const outText = outCol.text ? outCol.text.trim() : "";
             const errText = errCol.text ? errCol.text.trim() : "";
             const ok = code === 0;
-            const op = ops._pendingOp;
-
-            if (op === "mkdir" && ok) {
-                // outText: CREATED:path:name
-                if (outText.startsWith("CREATED:")) {
-                    const parts = outText.split(":");
-                    if (parts.length >= 3) {
-                        ops.folderCreated(parts[1], parts[2]);
-                    }
-                }
-            }
-
-            ops.finished(op, ok, ok ? "" : (errText || ops._errorFrom(code)), outText);
-            ops._pendingOp = "";
-            ops._errorFrom = function (c) { return "Operation failed"; };
-            ops._queue.shift();
-            if (ops._queue.length > 0) {
-                Qt.callLater(ops._pump);
-            }
+            ops._finishCurrent(ok, ok ? "" : (errText || ops._errorFrom(code)), outText);
         }
     }
 
@@ -42,39 +35,47 @@ QtObject {
     property var _errorFrom: function (c) { return "Operation failed"; }
     property var _queue: []
 
+    function _finishCurrent(ok, errText, outText) {
+        if (ops._pendingOp === "") return;
+        const op = ops._pendingOp;
+        ops._pendingOp = "";
+        ops._errorFrom = function (c) { return "Operation failed"; };
+
+        if (op === "mkdir" && ok) {
+            // Newline-delimited format avoids colon delimiter collisions with paths:
+            // CREATED\n<dir_path>\n<folder_name>
+            const lines = outText.split("\n");
+            if (lines.length >= 3 && lines[0] === "CREATED") {
+                ops.folderCreated(lines[1], lines[2]);
+            }
+        }
+
+        ops.finished(op, ok, ok ? "" : errText, outText);
+        ops._queue.shift();
+        if (ops._queue.length > 0) {
+            Qt.callLater(ops._pump);
+        }
+    }
+
     function run(op, command, describeFailure) {
         _queue.push({
             op: op,
             command: command,
             describeFailure: describeFailure || function (c) { return "Operation failed"; }
         });
-        if (!_proc.running) {
+        if (!_proc.running && _pendingOp === "") {
             _pump();
         }
     }
 
     function _pump() {
-        if (_queue.length === 0) return;
-        if (_proc.running) return;
+        if (_queue.length === 0 || _proc.running || _pendingOp !== "") return;
         const next = _queue[0];
         _pendingOp = next.op;
         _errorFrom = next.describeFailure;
+        _started = false;
         _proc.command = next.command;
         _proc.running = true;
-
-        // If the process failed to launch synchronously (e.g. binary missing),
-        // unblock the queue immediately so subsequent operations are not frozen.
-        if (!_proc.running) {
-            const failedOp = _pendingOp;
-            const errMsg = _errorFrom(-1);
-            _pendingOp = "";
-            _errorFrom = function (c) { return "Operation failed"; };
-            _queue.shift();
-            ops.finished(failedOp, false, errMsg, "");
-            if (_queue.length > 0) {
-                Qt.callLater(_pump);
-            }
-        }
     }
 
 // Every bash loop in this file ends with `done`, and `done` takes the exit
@@ -95,7 +96,7 @@ QtObject {
             '  c=1; while [ -e "$p/${n} (${c})" ]; do c=$((c + 1)); done; ' +
             '  n="${n} (${c})"; d="$p/$n"; ' +
             'fi; ' +
-            'if mkdir -p -- "$d"; then echo "CREATED:$d:$n"; else exit 1; fi';
+            'if mkdir -p -- "$d"; then printf "CREATED\\n%s\\n%s\\n" "$d" "$n"; else exit 1; fi';
         run("mkdir", ["bash", "-c", script, "--", parentDir, baseName], function () {
             return "Could not create folder in \"" + parentDir + "\"";
         });
@@ -168,6 +169,7 @@ QtObject {
             '  if [ -e "$target" ]; then ' +
             '    ext="${base##*.}"; name="${base%.*}"; ' +
             '    if [ "$ext" = "$base" ]; then ext=""; else ext=".$ext"; fi; ' +
+            '    if [ -z "$name" ] && [ -n "$ext" ]; then name="$ext"; ext=""; fi; ' +
             '    c=1; while [ -e "$d/${name} (${c})${ext}" ]; do c=$((c + 1)); done; ' +
             '    target="$d/${name} (${c})${ext}"; ' +
             '  fi; ' +
@@ -190,6 +192,7 @@ QtObject {
             '  if [ -e "$target" ]; then ' +
             '    ext="${base##*.}"; name="${base%.*}"; ' +
             '    if [ "$ext" = "$base" ]; then ext=""; else ext=".$ext"; fi; ' +
+            '    if [ -z "$name" ] && [ -n "$ext" ]; then name="$ext"; ext=""; fi; ' +
             '    c=1; while [ -e "$d/${name} (${c})${ext}" ]; do c=$((c + 1)); done; ' +
             '    target="$d/${name} (${c})${ext}"; ' +
             '  fi; ' +

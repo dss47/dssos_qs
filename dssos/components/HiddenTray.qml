@@ -19,6 +19,7 @@ PanelWindow {
     visible: true
     mask: hidden.shown ? openMask : closedMask
     exclusionMode: ExclusionMode.Ignore
+    WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: hidden.shown ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     property bool shown: false
@@ -26,6 +27,7 @@ PanelWindow {
     property bool closing: false
 
     OutsideClick {
+        targetLayer: WlrLayer.Top
         visible: hidden.shown && BarState.hiddenOpen
         onClicked: BarState.hiddenOpen = false
     }

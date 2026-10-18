@@ -48,6 +48,8 @@ Rectangle {
                 anchors.margins: 6
                 visible: root.isImage
                 source: root.hasSelection && root.isImage ? ("file://" + root.fileInfo.path) : ""
+                sourceSize.width: 256
+                sourceSize.height: 256
                 fillMode: Image.PreserveAspectFit
                 asynchronous: true
             }

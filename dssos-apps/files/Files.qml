@@ -97,7 +97,7 @@ Window {
 
     FolderListModel {
         id: folderModel
-        folder: "file://" + win.currentPath
+        folder: "file://" + win.currentPath.split("/").map(encodeURIComponent).join("/")
         showDirsFirst: true
         showHidden: false
         showDotAndDotDot: false
@@ -571,14 +571,7 @@ Window {
     }
 
     function openFile(filePath: string): void {
-        openProc.command = ["xdg-open", filePath];
-        openProc.running = true;
-    }
-
-    Process {
-        id: openProc
-        command: []
-        running: false
+        Quickshell.execDetached(["xdg-open", filePath]);
     }
 
     ColumnLayout {

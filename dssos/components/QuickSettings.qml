@@ -21,6 +21,7 @@ PanelWindow {
     visible: true
     mask: quick.shown ? openMask : closedMask
     exclusionMode: ExclusionMode.Ignore
+    WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: quick.shown ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     // ---- same palette as the bar ----
@@ -63,6 +64,7 @@ PanelWindow {
     PwObjectTracker { objects: [quick.sink] }
 
     OutsideClick {
+        targetLayer: WlrLayer.Top
         visible: quick.shown && BarState.quickOpen
         onClicked: BarState.quickOpen = false
     }

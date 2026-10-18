@@ -15,6 +15,7 @@ PanelWindow {
     visible: true
     mask: menu.shown ? openMask : closedMask
     exclusionMode: ExclusionMode.Ignore
+    WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: menu.shown ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     // ---- same palette ----
@@ -65,6 +66,7 @@ PanelWindow {
     }
 
     OutsideClick {
+        targetLayer: WlrLayer.Top
         visible: menu.shown
         onClicked: BarState.startOpen = false
     }
