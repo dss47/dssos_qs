@@ -230,24 +230,6 @@ PanelWindow {
             anchors.bottom: parent.bottom
             width: appsRow.width
 
-            // Ink active indicator
-            Rectangle {
-                id: ink
-                width: 44
-                height: 3
-                y: 0
-                x: bar.activeAppIndex >= 0 ? bar.activeAppIndex * (44 + appsRow.spacing) : 0
-                color: bar.cGreen
-                visible: bar.activeAppIndex >= 0
-
-                Behavior on x {
-                    NumberAnimation {
-                        duration: 140
-                        easing.type: Easing.OutQuad
-                    }
-                }
-            }
-
             Row {
                 id: appsRow
                 height: 48
@@ -262,9 +244,27 @@ PanelWindow {
                         property var wins: modelData.toplevels
                         property string appId: modelData.appId
                         property var entry: modelData.entry
+                        readonly property bool hasWins: wins && wins.length > 0
+                        readonly property bool isFocused: wins && wins.some(w => w.activated)
 
                         width: 44
                         height: 48
+
+                        // Indicator line: Green when active, Grey when open in background, Hidden if closed
+                        Rectangle {
+                            id: indicatorLine
+                            anchors.top: parent.top
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: 44
+                            height: 3
+                            radius: 1.5
+                            visible: appDelegate.hasWins
+                            color: appDelegate.isFocused ? bar.cGreen : "#666666"
+
+                            Behavior on color {
+                                ColorAnimation { duration: 140 }
+                            }
+                        }
 
                         Rectangle {
                             anchors.fill: parent
