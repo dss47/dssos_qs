@@ -168,11 +168,12 @@ PanelWindow {
         color: bar.cDock
 
         Rectangle {
+            id: topBorder
             anchors.top: parent.top
             anchors.left: parent.left
             anchors.right: parent.right
-            height: 1
-            color: bar.cBorder
+            height: 2
+            color: Qt.rgba(1, 1, 1, 0.12)
         }
 
         // ----------------- Left: Logo Button (.lg)
